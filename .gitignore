@@ -1,0 +1,8 @@
+uploads/
+backend/uploads/
+.env
+.env.local
+*.db
+dist/
+.next/
+.DS_Store

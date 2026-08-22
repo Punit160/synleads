@@ -1,0 +1,27 @@
+{
+  "name": "leadflow",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,magenta \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "dev:clean": "rm -rf frontend/.next && npm run dev",
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "start": "concurrently -n backend,frontend -c blue,magenta \"npm run start -w backend\" \"npm run start -w frontend\"",
+    "db:up": "docker compose up -d mysql",
+    "db:down": "docker compose down",
+    "db:push": "npm run db:push -w backend",
+    "db:migrate": "npm run db:migrate -w backend",
+    "db:reset": "npm run db:reset -w backend",
+    "db:seed": "npm run db:seed -w backend",
+    "db:setup": "bash backend/scripts/setup-local-mysql.sh",
+    "db:setup:docker": "npm run db:up && sleep 8 && DATABASE_URL=\"mysql://leadflow:leadflow@127.0.0.1:3307/leadflow\" SHADOW_DATABASE_URL=\"mysql://root:root@127.0.0.1:3307/leadflow\" npm run db:migrate:deploy -w backend && npm run db:seed -w backend",
+    "lint": "npm run lint -w frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

@@ -1,0 +1,17 @@
+[Unit]
+Description=Synentrix Flow Web (Next.js frontend)
+After=network.target synentrixflow-backend.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/synentrixflow/frontend
+Environment=NODE_ENV=production
+EnvironmentFile=/var/www/synentrixflow/frontend/.env.local
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
