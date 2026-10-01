@@ -154,9 +154,10 @@ export function activityColor(type: string, kind?: UnifiedActivityItem["kind"], 
 }
 
 export function previewToUnified(p: LeadActivityPreview): UnifiedActivityItem {
+  const isNote = p.type === "note" || p.title === "Note added";
   return {
     id: p.id,
-    kind: "timeline",
+    kind: isNote ? "note" : "timeline",
     at: p.createdAt,
     title: p.title,
     description: p.description,

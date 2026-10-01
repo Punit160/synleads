@@ -29,6 +29,7 @@ export async function fetchActivityMetaForLeads(leadIds: string[], previewLimit 
 
   const [
     timelineEvents,
+    recentNotes,
     noteCounts,
     commCounts,
     followUpCounts,
@@ -40,6 +41,11 @@ export async function fetchActivityMetaForLeads(leadIds: string[], previewLimit 
       where: { leadId: { in: leadIds } },
       orderBy: { createdAt: "desc" },
       include: { user: { select: { name: true } } },
+    }),
+    prisma.leadNote.findMany({
+      where: { leadId: { in: leadIds } },
+      orderBy: { createdAt: "desc" },
+      include: { author: { select: { name: true } } },
     }),
     prisma.leadNote.groupBy({
       by: ["leadId"],
@@ -74,18 +80,56 @@ export async function fetchActivityMetaForLeads(leadIds: string[], previewLimit 
   ]);
 
   const recentByLead = new Map<string, LeadActivityPreview[]>();
+
+  type PreviewDraft = LeadActivityPreview & { sortAt: number };
+  const draftsByLead = new Map<string, PreviewDraft[]>();
+
+  function pushDraft(leadId: string, draft: PreviewDraft) {
+    const list = draftsByLead.get(leadId) || [];
+    list.push(draft);
+    draftsByLead.set(leadId, list);
+  }
+
   for (const event of timelineEvents) {
-    const list = recentByLead.get(event.leadId) || [];
-    if (list.length >= previewLimit) continue;
-    list.push({
+    if (event.type === "note") continue;
+    pushDraft(event.leadId, {
       id: event.id,
       type: event.type,
       title: event.title,
       description: event.description,
       createdAt: event.createdAt.toISOString(),
       userName: event.user?.name ?? null,
+      sortAt: event.createdAt.getTime(),
     });
-    recentByLead.set(event.leadId, list);
+  }
+
+  for (const note of recentNotes) {
+    pushDraft(note.leadId, {
+      id: note.id,
+      type: "note",
+      title: "Note added",
+      description: note.content,
+      createdAt: note.createdAt.toISOString(),
+      userName: note.author?.name ?? null,
+      sortAt: note.createdAt.getTime(),
+    });
+  }
+
+  const lastActivityByLead = new Map<string, string>();
+  for (const [leadId, drafts] of draftsByLead) {
+    drafts.sort((a, b) => b.sortAt - a.sortAt);
+    recentByLead.set(
+      leadId,
+      drafts.slice(0, previewLimit).map(({ sortAt: _sortAt, ...preview }) => preview)
+    );
+    if (drafts.length > 0) {
+      lastActivityByLead.set(leadId, drafts[0].createdAt);
+    }
+  }
+  for (const event of timelineEvents) {
+    if (!lastActivityByLead.has(event.leadId)) {
+      lastActivityByLead.set(event.leadId, event.createdAt.toISOString());
+    }
   }
 
   const countsByLead = new Map<string, LeadActivityCounts>();
@@ -106,13 +150,6 @@ export async function fetchActivityMetaForLeads(leadIds: string[], previewLimit 
   countMap(followUpCounts, "followUps");
   countMap(pendingFollowUpCounts, "pendingFollowUps");
   countMap(attachmentCounts, "attachments");
-
-  const lastActivityByLead = new Map<string, string>();
-  for (const event of timelineEvents) {
-    if (!lastActivityByLead.has(event.leadId)) {
-      lastActivityByLead.set(event.leadId, event.createdAt.toISOString());
-    }
-  }
 
   return { recentByLead, countsByLead, lastActivityByLead };
 }

@@ -22,6 +22,7 @@ import {
   ThumbsDown,
   ChevronDown,
   ChevronUp,
+  StickyNote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/api";
@@ -113,12 +114,14 @@ export function LeadCard({
   canEdit,
   assignable,
   onAssign,
+  onAddNote,
 }: {
   lead: LeadCardData;
   canAssign: boolean;
   canEdit: boolean;
   assignable: AssignableUser[];
   onAssign: (leadId: string, ownerId: string) => void;
+  onAddNote?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showActivity, setShowActivity] = useState(true);
@@ -213,6 +216,15 @@ export function LeadCard({
 
           {/* Primary actions */}
           <div className="flex flex-wrap gap-2 mb-4">
+            {onAddNote && (
+              <button
+                type="button"
+                onClick={onAddNote}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-xs font-semibold hover:bg-amber-100"
+              >
+                <StickyNote className="h-3.5 w-3.5" /> Add Note
+              </button>
+            )}
             <TenantLink
               href={`/dashboard/quotations/new?leadId=${lead.id}`}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
@@ -315,7 +327,7 @@ export function LeadCard({
                 {showActivity ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
               <TenantLink href={`/dashboard/leads/${lead.id}?tab=activity`} className="text-[11px] font-medium text-blue-600 hover:underline">
-                Log work →
+                Full activity →
               </TenantLink>
             </div>
             {lead.activityCounts && <ActivityStatChips counts={lead.activityCounts} className="mb-3" />}
@@ -360,6 +372,12 @@ export function LeadCard({
               <Copy className="h-4 w-4" />
               <span className="text-[9px]">Copy</span>
             </button>
+            {onAddNote && (
+              <button type="button" onClick={onAddNote} className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-white text-slate-500 hover:text-amber-700" title="Add note">
+                <StickyNote className="h-4 w-4" />
+                <span className="text-[9px]">Note</span>
+              </button>
+            )}
             {canAssign && (
               <TenantLink href={`/dashboard/leads/${lead.id}?tab=assign`} className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-white text-slate-500 hover:text-blue-600" title="Assign">
                 <Users className="h-4 w-4" />

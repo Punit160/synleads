@@ -13,6 +13,20 @@ import {
 } from "@/lib/lead-activity";
 import { CheckCircle2 } from "lucide-react";
 
+function isNoteItem(item: UnifiedActivityItem): boolean {
+  return item.kind === "note" || item.title === "Note added";
+}
+
+function formatActivityWhen(item: UnifiedActivityItem): { primary: string; secondary?: string } {
+  if (isNoteItem(item)) {
+    return {
+      primary: formatDateTime(item.at),
+      secondary: formatRelativeTime(item.at),
+    };
+  }
+  return { primary: formatRelativeTime(item.at) };
+}
+
 function ActivityRow({
   item,
   compact,
@@ -22,6 +36,7 @@ function ActivityRow({
 }) {
   const Icon = activityIcon(item.followUpType || item.channel || item.title, item.kind);
   const color = activityColor(item.title, item.kind, item.status);
+  const when = formatActivityWhen(item);
 
   return (
     <li className="relative flex gap-3 pb-4 last:pb-0">
@@ -32,9 +47,14 @@ function ActivityRow({
       <div className="flex-1 min-w-0 pt-0.5">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <p className={cn("font-medium text-slate-900", compact ? "text-xs" : "text-sm")}>{item.title}</p>
-          <time className="text-[10px] text-slate-400 shrink-0" title={formatDateTime(item.at)}>
-            {formatRelativeTime(item.at)}
-          </time>
+          <div className="text-right shrink-0" title={formatDateTime(item.at)}>
+            <time className={cn("block text-slate-600", isNoteItem(item) ? "text-[11px] font-medium" : "text-[10px] text-slate-400")}>
+              {when.primary}
+            </time>
+            {when.secondary && (
+              <span className="block text-[10px] text-slate-400 mt-0.5">{when.secondary}</span>
+            )}
+          </div>
         </div>
         {item.description && (
           <p className={cn("text-slate-600 mt-0.5 whitespace-pre-wrap break-words", compact ? "text-[11px] line-clamp-2" : "text-xs")}>

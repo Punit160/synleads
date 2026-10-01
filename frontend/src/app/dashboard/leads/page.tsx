@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { TenantLink } from "@/components/ui/tenant-link";
-import { Plus, Download, Copy, Trash2, Pencil, Archive, ArchiveRestore, LayoutGrid, List, Bookmark, BookmarkPlus } from "lucide-react";
+import { Plus, Download, Copy, Trash2, Pencil, Archive, ArchiveRestore, LayoutGrid, List, Bookmark, BookmarkPlus, StickyNote } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -30,6 +30,7 @@ import {
 import { FilterBar } from "@/components/ui/filter-bar";
 import { ExcelImportToolbar } from "@/components/ui/excel-import-toolbar";
 import { LeadCard, type LeadCardData } from "@/components/leads/lead-card";
+import { LeadNoteModal, type LeadNoteTarget } from "@/components/leads/lead-note-modal";
 
 type Lead = LeadCardData;
 
@@ -99,6 +100,8 @@ function LeadsPageContent() {
   const canAssign = auth.hasPermission("assign");
   const canDelete = auth.hasPermission("delete");
   const canAdd = auth.hasPermission("add");
+  const canEdit = auth.hasPermission("edit");
+  const [noteLead, setNoteLead] = useState<LeadNoteTarget | null>(null);
 
   useEffect(() => {
     apiFetch<SavedView[]>("/api/saved-views?entityType=lead").then(setSavedViews).catch(() => {});
@@ -197,6 +200,14 @@ function LeadsPageContent() {
   async function handleDuplicate(id: string) {
     await apiFetch(`/api/leads/${id}/duplicate`, { method: "POST" });
     await load(filters);
+  }
+
+  function openNoteModal(lead: Lead) {
+    setNoteLead({
+      id: lead.id,
+      leadNumber: lead.leadNumber,
+      name: `${lead.firstName}${lead.lastName ? ` ${lead.lastName}` : ""}`.trim(),
+    });
   }
 
   async function handleArchive(id: string, restore = false) {
@@ -433,9 +444,10 @@ function LeadsPageContent() {
               key={lead.id}
               lead={lead}
               canAssign={canAssign}
-              canEdit={auth.hasPermission("edit")}
+              canEdit={canEdit}
               assignable={assignable.map((u) => ({ userId: u.userId, name: u.name }))}
               onAssign={handleAssign}
+              onAddNote={canEdit ? () => openNoteModal(lead) : undefined}
             />
           ))}
         </div>
@@ -498,6 +510,16 @@ function LeadsPageContent() {
                   <Td className="text-right font-semibold">{lead.score}</Td>
                   <Td>
                     <div className="flex items-center justify-end gap-0.5">
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => openNoteModal(lead)}
+                          className="p-1.5 rounded hover:bg-amber-50 text-slate-500 hover:text-amber-700"
+                          title="Add note"
+                        >
+                          <StickyNote className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       <TenantLink href={`/dashboard/leads/${lead.id}/edit`} className="p-1.5 rounded hover:bg-slate-100 text-slate-500" title="Edit">
                         <Pencil className="h-3.5 w-3.5" />
                       </TenantLink>
@@ -533,6 +555,13 @@ function LeadsPageContent() {
           </ProTable>
       </Panel>
       )}
+
+      <LeadNoteModal
+        lead={noteLead}
+        open={!!noteLead}
+        onClose={() => setNoteLead(null)}
+        onSaved={() => load(filters)}
+      />
     </div>
   );
 }
