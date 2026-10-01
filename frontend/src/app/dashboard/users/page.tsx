@@ -292,7 +292,7 @@ export default function UsersPage() {
                   onClick={() => setExpandedManagers((p) => ({ ...p, [mgr.user.id]: !open }))}
                 >
                   {open ? <ChevronDown className="h-4 w-4 text-slate-500" /> : <ChevronRight className="h-4 w-4 text-slate-500" />}
-                  <Users className="h-4 w-4 text-blue-600" />
+                  <Users className="h-4 w-4 text-brand" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-slate-900">{mgr.user.name}</p>
                     <p className="text-xs text-slate-500">{mgr.user.email} · Sales Manager</p>

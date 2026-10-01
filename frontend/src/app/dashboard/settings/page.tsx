@@ -202,8 +202,8 @@ export default function SettingsPage() {
             </dl>
             <p className="text-xs text-slate-500 mt-3">
               To change plan or add more users, contact the Synentrix team at{" "}
-              <a href={SUPPORT_MAILTO} className="text-blue-600 hover:underline">{SUPPORT_EMAIL}</a>.
-              See the <TenantLink href="/dashboard/manual" className="text-blue-600 hover:underline">User Manual</TenantLink> for how team limits work.
+              <a href={SUPPORT_MAILTO} className="text-brand hover:underline">{SUPPORT_EMAIL}</a>.
+              See the <TenantLink href="/dashboard/manual" className="text-brand hover:underline">User Manual</TenantLink> for how team limits work.
             </p>
           </Panel>
         )}
@@ -212,7 +212,7 @@ export default function SettingsPage() {
           <RolePermissionsMatrix compact />
           <p className="text-xs text-slate-500 mt-3">
             Full role matrix in the{" "}
-            <TenantLink href="/dashboard/manual#roles-permissions" className="text-blue-600 hover:underline">
+            <TenantLink href="/dashboard/manual#roles-permissions" className="text-brand hover:underline">
               User Manual
             </TenantLink>
             . Contact an admin to change your role.
@@ -373,7 +373,7 @@ export default function SettingsPage() {
           </ProTable>
           {canManageTeam && (
             <div className="px-4 py-3 border-t border-slate-100 bg-slate-50">
-              <TenantLink href="/dashboard/users" className="text-sm font-medium text-blue-600 hover:underline">
+              <TenantLink href="/dashboard/users" className="text-sm font-medium text-brand hover:underline">
                 Open full team management →
               </TenantLink>
             </div>
@@ -395,7 +395,7 @@ export default function SettingsPage() {
           <div className="text-sm text-slate-600 space-y-3">
             <p>
               Open the{" "}
-              <TenantLink href="/dashboard/manual" className="text-blue-600 font-medium hover:underline">
+              <TenantLink href="/dashboard/manual" className="text-brand font-medium hover:underline">
                 User Manual
               </TenantLink>{" "}
               (last item in the sidebar) for step-by-step instructions on leads, pipeline, quotations, and team setup.
@@ -412,7 +412,7 @@ export default function SettingsPage() {
             <p>{PRODUCT_NAME} — lead management & sales CRM by Synentrix Technologies Private Limited.</p>
             <p className="text-xs text-slate-500">
               Support:{" "}
-              <a href={SUPPORT_MAILTO} className="text-blue-600 hover:underline">{SUPPORT_EMAIL}</a>
+              <a href={SUPPORT_MAILTO} className="text-brand hover:underline">{SUPPORT_EMAIL}</a>
             </p>
           </div>
         </Panel>

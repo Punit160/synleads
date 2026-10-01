@@ -22,6 +22,7 @@ export type IntegrationCatalogItem = {
 
 export const INTEGRATION_IDS = [
   "email",
+  "email_inbox",
   "whatsapp",
   "sms",
   "google_ads",
@@ -64,6 +65,48 @@ export const INTEGRATION_CATALOG: IntegrationCatalogItem[] = [
       { key: "password", label: "SMTP password / app password", type: "password", required: true },
       { key: "fromEmail", label: "From email", type: "text", placeholder: "sales@company.com", required: true },
       { key: "fromName", label: "From name", type: "text", placeholder: "Acme Sales Team" },
+    ],
+    docsUrl: "https://support.google.com/mail/answer/185833",
+  },
+  {
+    id: "email_inbox",
+    name: "Email Inbox (Lead capture)",
+    category: "Lead Source",
+    summary:
+      "Turn inquiry emails into leads. Add the company inbox that receives marketing replies and website enquiries — new messages are captured automatically.",
+    steps: [
+      "Enter the company email that receives lead enquiries (for example sales@, info@, or your campaign reply-to).",
+      "Save & connect. Copy this company's unique inbound address and forward that mailbox to it, or connect IMAP so only this workspace reads the inbox.",
+      "Gmail: create an App Password and choose Gmail as the provider. Outlook: use the mailbox password or app password.",
+      "Inbound mail is parsed for name, email, phone, company, city, and requirement. Matching contacts stay on this company's existing lead — they are never mixed with another company.",
+      "Use Fetch now after connecting IMAP, or wait for automatic checks every few minutes.",
+    ],
+    fields: [
+      {
+        key: "captureEmail",
+        label: "Company inbox that receives leads",
+        type: "text",
+        placeholder: "sales@company.com",
+        required: true,
+        help: "The address prospects email, or your campaign reply-to and form notification inbox.",
+      },
+      {
+        key: "provider",
+        label: "Mailbox provider (optional IMAP)",
+        type: "select",
+        options: [
+          { value: "gmail", label: "Gmail / Google Workspace" },
+          { value: "outlook", label: "Outlook / Microsoft 365" },
+          { value: "yahoo", label: "Yahoo Mail" },
+          { value: "custom", label: "Other IMAP / cPanel" },
+        ],
+        help: "Skip IMAP if you will only forward mail to the inbound address.",
+      },
+      { key: "imapHost", label: "IMAP host", type: "text", placeholder: "imap.gmail.com" },
+      { key: "imapPort", label: "IMAP port", type: "number", placeholder: "993" },
+      { key: "imapUser", label: "IMAP username", type: "text", placeholder: "sales@company.com" },
+      { key: "imapPassword", label: "IMAP password / app password", type: "password" },
+      { key: "mailbox", label: "Folder", type: "text", placeholder: "INBOX", help: "Usually INBOX. Use a dedicated folder if you filter enquiries there." },
     ],
     docsUrl: "https://support.google.com/mail/answer/185833",
   },
@@ -249,6 +292,16 @@ const emailSchema = z.object({
   fromName: z.string().optional(),
 });
 
+const emailInboxSchema = z.object({
+  captureEmail: z.string().email(),
+  provider: z.enum(["gmail", "outlook", "yahoo", "custom"]).optional(),
+  imapHost: z.string().optional(),
+  imapPort: z.coerce.number().min(1).max(65535).optional(),
+  imapUser: z.string().optional(),
+  imapPassword: z.string().optional(),
+  mailbox: z.string().optional(),
+});
+
 const whatsappSchema = z.object({
   provider: z.enum(["meta", "twilio", "msg91"]),
   phoneNumberId: z.string().min(1),
@@ -302,6 +355,7 @@ const zapierSchema = z.object({
 
 export const INTEGRATION_CONFIG_SCHEMAS: Record<IntegrationId, z.ZodTypeAny> = {
   email: emailSchema,
+  email_inbox: emailInboxSchema,
   whatsapp: whatsappSchema,
   sms: smsSchema,
   google_ads: googleAdsSchema,
@@ -324,6 +378,8 @@ export function isIntegrationConnected(
   switch (id) {
     case "email":
       return emailSchema.safeParse(config).success;
+    case "email_inbox":
+      return emailInboxSchema.safeParse(config).success;
     case "whatsapp":
       return whatsappSchema.safeParse(config).success;
     case "sms":
@@ -345,7 +401,15 @@ export function isIntegrationConnected(
   }
 }
 
-const SECRET_KEYS = new Set(["password", "accessToken", "apiKey", "appSecret", "webhookSecret", "crmKey"]);
+const SECRET_KEYS = new Set([
+  "password",
+  "imapPassword",
+  "accessToken",
+  "apiKey",
+  "appSecret",
+  "webhookSecret",
+  "crmKey",
+]);
 
 export function maskIntegrationConfig(config: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};

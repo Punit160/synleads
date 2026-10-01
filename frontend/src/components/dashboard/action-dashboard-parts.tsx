@@ -3,42 +3,60 @@
 import { TenantLink } from "@/components/ui/tenant-link";
 import { cn } from "@/lib/utils";
 import {
+  Activity,
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
-  Minus,
-  TrendingUp,
+  CalendarClock,
+  CircleX,
+  Handshake,
   IndianRupee,
-  Target,
+  Layers,
+  Minus,
   Percent,
   Sparkles,
+  Target,
+  Trophy,
+  TrendingUp,
+  UserPlus,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
 const KPI_ICONS: Record<string, LucideIcon> = {
-  Pipeline: TrendingUp,
+  Pipeline: Layers,
+  "Pipeline Value": Layers,
+  "Weighted Pipeline": Target,
   "Won Revenue": IndianRupee,
   Forecast: Target,
   Conversion: Percent,
   "At Risk": AlertTriangle,
-};
-
-const KPI_ACCENTS: Record<string, string> = {
-  Pipeline: "from-indigo-500 to-violet-500",
-  "Won Revenue": "from-emerald-500 to-teal-500",
-  Forecast: "from-blue-500 to-indigo-500",
-  Conversion: "from-violet-500 to-purple-500",
-  "At Risk": "from-amber-500 to-orange-500",
+  "Total Leads": Users,
+  "New Leads": UserPlus,
+  "Active Leads": Activity,
+  "Unassigned Leads": AlertTriangle,
+  "My Leads": Users,
+  "Team Leads": Users,
+  "Open Opportunities": TrendingUp,
+  "Follow-ups": CalendarClock,
+  "Follow-ups Today": CalendarClock,
+  "Overdue Follow-ups": AlertTriangle,
+  "Upcoming Follow-ups": CalendarClock,
+  "Qualified Leads": Handshake,
+  "Proposal Leads": Sparkles,
+  "Negotiation Leads": Handshake,
+  "Won Leads": Trophy,
+  "Lost Leads": CircleX,
 };
 
 const STAGE_BAR_COLORS = [
-  "from-indigo-400 to-indigo-600",
-  "from-violet-400 to-violet-600",
-  "from-blue-400 to-blue-600",
-  "from-cyan-400 to-cyan-600",
-  "from-emerald-400 to-emerald-600",
-  "from-amber-400 to-amber-600",
-  "from-rose-400 to-rose-600",
+  "bg-[#384bff]",
+  "bg-[#6366f1]",
+  "bg-[#0f172a]",
+  "bg-[#0891b2]",
+  "bg-[#059669]",
+  "bg-[#d97706]",
+  "bg-[#e11d48]",
 ];
 
 const AGENDA_TYPE_STYLES: Record<string, { dot: string; badge: string }> = {
@@ -50,6 +68,15 @@ const AGENDA_TYPE_STYLES: Record<string, { dot: string; badge: string }> = {
   email: { dot: "bg-slate-400 ring-slate-100", badge: "bg-slate-50 text-slate-600 border-slate-100" },
 };
 
+const KPI_CARD_THEMES: Record<string, { icon: string; accent: string; value?: string }> = {
+  "Total Leads": { icon: "bg-brand-muted text-brand border-brand-light", accent: "bg-brand" },
+  "Active Leads": { icon: "bg-slate-100 text-slate-700 border-slate-200", accent: "bg-slate-800" },
+  "New Leads": { icon: "bg-indigo-50 text-indigo-600 border-indigo-100", accent: "bg-indigo-500" },
+  "Follow-ups": { icon: "bg-cyan-50 text-cyan-700 border-cyan-100", accent: "bg-cyan-600" },
+  "Won Leads": { icon: "bg-emerald-50 text-emerald-700 border-emerald-100", accent: "bg-emerald-600" },
+  "Lost Leads": { icon: "bg-rose-50 text-rose-600 border-rose-100", accent: "bg-rose-500" },
+};
+
 /* ── KPI card with icon + accent strip ── */
 export function NeutralKpiCard({
   label,
@@ -58,6 +85,7 @@ export function NeutralKpiCard({
   trendLabel,
   href,
   highlight,
+  hint,
 }: {
   label: string;
   value: string | number;
@@ -65,67 +93,107 @@ export function NeutralKpiCard({
   trendLabel?: string;
   href?: string;
   highlight?: "warn" | "danger" | "success";
+  hint?: string;
 }) {
   const Icon = KPI_ICONS[label] || TrendingUp;
-  const accent = KPI_ACCENTS[label] || "from-indigo-500 to-violet-500";
+  const theme = KPI_CARD_THEMES[label] || { icon: "bg-slate-50 text-slate-500 border-slate-100", accent: "bg-brand" };
+  const iconClass =
+    highlight === "danger"
+      ? "bg-rose-50 text-rose-600 border-rose-100"
+      : highlight === "success"
+        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+        : highlight === "warn"
+          ? "bg-amber-50 text-amber-700 border-amber-100"
+          : theme.icon;
+  const accentClass =
+    highlight === "danger" ? "bg-rose-500" : highlight === "success" ? "bg-emerald-500" : highlight === "warn" ? "bg-amber-500" : theme.accent;
 
   const content = (
-    <div className="group relative rounded-xl border border-slate-200/80 bg-white px-4 py-4 shadow-sm hover:shadow-lg hover:border-indigo-200/60 transition-all duration-300 h-full overflow-hidden">
-      <div className={cn("absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r opacity-80 group-hover:opacity-100 transition-opacity", accent)} />
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
-          <p
-            className={cn(
-              "text-2xl font-bold tabular-nums text-slate-900 mt-1.5 tracking-tight",
-              highlight === "warn" && "text-amber-700",
-              highlight === "danger" && "text-red-700",
-              highlight === "success" && "text-emerald-700"
-            )}
-          >
-            {value}
-          </p>
-          {(trend !== undefined && trend !== null) || trendLabel ? (
-            <div className="flex items-center gap-1 mt-2">
-              {trend !== undefined && trend !== null && (
-                <>
-                  {trend > 0 ? (
-                    <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
-                  ) : trend < 0 ? (
-                    <ArrowDownRight className="h-3.5 w-3.5 text-red-500" />
-                  ) : (
-                    <Minus className="h-3.5 w-3.5 text-slate-400" />
-                  )}
-                  <span
-                    className={cn(
-                      "text-xs font-semibold tabular-nums",
-                      trend > 0 ? "text-emerald-700" : trend < 0 ? "text-red-600" : "text-slate-500"
-                    )}
-                  >
-                    {trend > 0 ? "+" : ""}
-                    {trend}%
-                  </span>
-                </>
-              )}
-              {trendLabel && <span className="text-[11px] text-slate-400">{trendLabel}</span>}
-            </div>
-          ) : null}
-        </div>
-        <div className={cn("shrink-0 h-9 w-9 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-sm", accent)}>
-          <Icon className="h-4 w-4 text-white" strokeWidth={2.25} />
+    <div className="group relative overflow-hidden rounded-[10px] border border-slate-200/90 bg-white px-4 py-3.5 hover:border-slate-300 hover:shadow-[0_8px_20px_-12px_rgba(15,23,42,0.18)] transition-all h-full">
+      <span className={cn("absolute inset-x-0 top-0 h-[3px]", accentClass)} />
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[11px] font-semibold text-slate-500 tracking-wide pt-0.5">{label}</p>
+        <div className={cn("h-8 w-8 rounded-lg border flex items-center justify-center transition-colors", iconClass)}>
+          <Icon className="h-4 w-4" strokeWidth={1.75} />
         </div>
       </div>
+      <p
+        className={cn(
+          "text-[1.65rem] leading-none font-semibold tabular-nums text-slate-900 mt-3 tracking-tight",
+          highlight === "warn" && "text-amber-700",
+          highlight === "danger" && "text-red-600",
+          highlight === "success" && "text-emerald-700"
+        )}
+      >
+        {value}
+      </p>
+      {hint && <p className="text-[11px] text-slate-500 mt-2">{hint}</p>}
+      {(trend !== undefined && trend !== null) || trendLabel ? (
+        <div className="flex items-center gap-1 mt-2">
+          {trend !== undefined && trend !== null && (
+            <>
+              {trend > 0 ? (
+                <ArrowUpRight className="h-3.5 w-3.5 text-emerald-600" />
+              ) : trend < 0 ? (
+                <ArrowDownRight className="h-3.5 w-3.5 text-red-500" />
+              ) : (
+                <Minus className="h-3.5 w-3.5 text-slate-400" />
+              )}
+              <span
+                className={cn(
+                  "text-xs font-semibold tabular-nums",
+                  trend > 0 ? "text-emerald-700" : trend < 0 ? "text-red-600" : "text-slate-500"
+                )}
+              >
+                {trend > 0 ? "+" : ""}
+                {trend}%
+              </span>
+            </>
+          )}
+          {trendLabel && <span className="text-[11px] text-slate-400">{trendLabel}</span>}
+        </div>
+      ) : null}
     </div>
   );
 
   if (href) {
     return (
-      <TenantLink href={href} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-xl">
+      <TenantLink href={href} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-[10px]">
         {content}
       </TenantLink>
     );
   }
   return content;
+}
+
+export function CompactMetric({
+  label,
+  value,
+  href,
+  tone,
+}: {
+  label: string;
+  value: string | number;
+  href?: string;
+  tone?: "warn" | "danger" | "success";
+}) {
+  const inner = (
+    <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 hover:border-slate-300 hover:bg-slate-50 transition-colors">
+      <span className="text-[11px] text-slate-500">{label}</span>
+      <span
+        className={cn(
+          "text-sm font-semibold tabular-nums text-slate-900",
+          tone === "warn" && "text-amber-700",
+          tone === "danger" && "text-red-600",
+          tone === "success" && "text-emerald-700"
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+  if (href) return <TenantLink href={href}>{inner}</TenantLink>;
+  return inner;
 }
 
 /* ── Attention metric chip ── */
@@ -192,16 +260,16 @@ export function DashboardFilterBar({
 
   return (
     <div className="flex flex-wrap items-center gap-2 max-w-full">
-      <div className="inline-flex rounded-xl border border-slate-200/90 bg-white/90 backdrop-blur-sm p-1 shadow-sm overflow-x-auto max-w-full">
+      <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 overflow-x-auto max-w-full">
         {ranges.map((r) => (
           <button
             key={r.key}
             type="button"
             onClick={() => onRangeChange(r.key)}
             className={cn(
-              "px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0",
+              "px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-md transition-colors whitespace-nowrap shrink-0",
               range === r.key
-                ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200"
+                ? "bg-brand text-white"
                 : "text-slate-600 hover:bg-slate-50"
             )}
           >
@@ -213,7 +281,7 @@ export function DashboardFilterBar({
       <select
         value={ownerId}
         onChange={(e) => onOwnerChange(e.target.value)}
-        className="text-xs font-medium border border-slate-200/90 rounded-xl px-3 py-2 bg-white/90 backdrop-blur-sm text-slate-700 shadow-sm max-w-full min-w-0 w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+        className="text-xs font-medium border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-700 max-w-full min-w-0 w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-brand/20"
       >
         <option value="all">All Owners</option>
         {owners.map((o) => (
@@ -255,21 +323,21 @@ export function PipelineHero({
 
   return (
     <div>
-      <div className="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-indigo-50/30 flex flex-wrap items-end justify-between gap-4">
+      <div className="px-4 pt-1 pb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Total pipeline</p>
-          <p className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight mt-0.5">{fmt(totalValue)}</p>
+          <p className="text-[28px] font-semibold text-slate-900 tabular-nums tracking-tight leading-none mt-1">{fmt(totalValue)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {stats.map((s) => (
-            <div key={s.label} className="px-3 py-1.5 rounded-lg bg-white/80 border border-slate-200/80 text-[11px] shadow-sm">
+            <div key={s.label} className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-[11px]">
               <span className="text-slate-500">{s.label}</span>{" "}
               <strong className="text-slate-800 font-semibold">{s.value}</strong>
             </div>
           ))}
         </div>
       </div>
-      <div className="p-5 space-y-3">
+      <div className="p-4 space-y-2.5">
         {stages.length === 0 ? (
           <p className="text-sm text-slate-500 text-center py-8">No pipeline stages configured yet.</p>
         ) : (
@@ -280,17 +348,17 @@ export function PipelineHero({
               <TenantLink
                 key={stage.name}
                 href="/dashboard/pipeline"
-                className="flex items-center gap-3 group rounded-lg px-2 py-1.5 -mx-2 hover:bg-indigo-50/40 transition-colors"
+                className="flex items-center gap-3 group rounded-lg px-2 py-1.5 -mx-2 hover:bg-brand-muted/60 transition-colors"
               >
                 <div className="w-24 shrink-0">
-                  <p className="text-xs font-semibold text-slate-700 truncate group-hover:text-indigo-700 transition-colors">
+                  <p className="text-xs font-semibold text-slate-700 truncate group-hover:text-brand transition-colors">
                     {stage.name}
                   </p>
                   <p className="text-[10px] text-slate-400 font-medium">{stage.dealCount} deals</p>
                 </div>
-                <div className="flex-1 h-7 rounded-lg bg-slate-100/80 overflow-hidden shadow-inner">
+                <div className="flex-1 h-6 rounded-md bg-slate-100 overflow-hidden">
                   <div
-                    className={cn("h-full rounded-lg bg-gradient-to-r shadow-sm transition-all duration-500 group-hover:brightness-110", barColor)}
+                    className={cn("h-full rounded-md transition-all duration-300", barColor)}
                     style={{ width: `${Math.max(widthPct, stage.totalValue > 0 ? 5 : 0)}%` }}
                   />
                 </div>
@@ -326,7 +394,7 @@ export function AgendaTimeline({
           <Sparkles className="h-5 w-5 text-slate-400" />
         </div>
         <p className="text-sm text-slate-500">Nothing scheduled for today.</p>
-        <TenantLink href="/dashboard/activities" className="inline-block mt-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700">
+        <TenantLink href="/dashboard/activities" className="inline-block mt-2 text-sm font-semibold text-brand hover:text-brand-dark">
           Schedule activity →
         </TenantLink>
       </div>
@@ -344,7 +412,7 @@ export function AgendaTimeline({
             className="flex gap-3 px-5 py-3 hover:bg-slate-50/80 transition-colors relative"
           >
             <div className="flex flex-col items-center shrink-0 w-12">
-              <span className="text-[11px] font-bold font-mono text-indigo-600">{item.time}</span>
+              <span className="text-[11px] font-bold font-mono text-brand">{item.time}</span>
               <div className={cn("mt-1.5 h-2.5 w-2.5 rounded-full ring-4 shrink-0", styles.dot)} />
               {i < items.length - 1 && (
                 <div className="w-px flex-1 min-h-[12px] bg-slate-200 mt-1" />
@@ -384,7 +452,7 @@ export function DealAtRiskRow({
   return (
     <TenantLink
       href={`/dashboard/deals/${id}`}
-      className="flex items-start gap-3 px-5 py-3.5 hover:bg-gradient-to-r hover:from-red-50/40 hover:to-transparent border-b border-slate-50 last:border-0 transition-all group"
+      className="flex items-start gap-3 px-4 py-3 hover:bg-amber-50/40 border-b border-slate-50 last:border-0 transition-colors group"
     >
       <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 group-hover:bg-amber-200 transition-colors">
         <AlertTriangle className="h-4 w-4 text-amber-600" />
@@ -396,7 +464,7 @@ export function DealAtRiskRow({
         </p>
         <p className="text-xs text-amber-700 font-medium mt-1">{reason}</p>
       </div>
-      <span className="text-xs text-indigo-600 font-semibold shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">View →</span>
+      <span className="text-xs text-brand font-semibold shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">View →</span>
     </TenantLink>
   );
 }
@@ -453,16 +521,16 @@ export function RevenueTrendChart({
         <path d={area("won")} fill="url(#wonGrad)" opacity="0.4" />
         <defs>
           <linearGradient id="pipeGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#818cf8" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#818cf8" stopOpacity="0" />
+            <stop offset="0%" stopColor="#384bff" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#384bff" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="wonGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
             <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
           </linearGradient>
         </defs>
-        <path d={line("pipeline")} fill="none" stroke="#a5b4fc" strokeWidth="2.5" strokeLinecap="round" />
-        <path d={line("forecast")} fill="none" stroke="#6366f1" strokeWidth="2" strokeDasharray="5 4" strokeLinecap="round" />
+        <path d={line("pipeline")} fill="none" stroke="#8b96ff" strokeWidth="2.5" strokeLinecap="round" />
+        <path d={line("forecast")} fill="none" stroke="#384bff" strokeWidth="2" strokeDasharray="5 4" strokeLinecap="round" />
         <path d={line("won")} fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" />
         {points.map((p, i) => (
           <text key={p.month} x={toX(i)} y={h - 6} textAnchor="middle" className="fill-slate-500 text-[9px] font-medium">
@@ -472,13 +540,13 @@ export function RevenueTrendChart({
       </svg>
       <div className="flex flex-wrap gap-4 mt-3 text-[11px] font-medium text-slate-500">
         <span className="flex items-center gap-2">
-          <span className="h-2 w-5 rounded-full bg-indigo-300" /> Pipeline
+          <span className="h-2 w-5 rounded-full bg-brand-light" /> Pipeline
         </span>
         <span className="flex items-center gap-2">
           <span className="h-2 w-5 rounded-full bg-emerald-600" /> Won
         </span>
         <span className="flex items-center gap-2">
-          <span className="h-2 w-5 rounded-full bg-indigo-500 opacity-70" style={{ backgroundImage: "repeating-linear-gradient(90deg, #6366f1 0 4px, transparent 4px 8px)" }} /> Forecast
+          <span className="h-2 w-5 rounded-full bg-brand opacity-70" style={{ backgroundImage: "repeating-linear-gradient(90deg, #384bff 0 4px, transparent 4px 8px)" }} /> Forecast
         </span>
       </div>
     </div>
@@ -495,11 +563,12 @@ export function LeadFunnelChart({
 }) {
   const max = Math.max(...stages.map((s) => s.count), 1);
   const funnelColors = [
-    "from-slate-400 to-slate-500",
-    "from-indigo-400 to-indigo-500",
-    "from-violet-400 to-violet-500",
-    "from-blue-400 to-blue-500",
-    "from-emerald-400 to-emerald-500",
+    "bg-slate-300",
+    "bg-[#8b96ff]",
+    "bg-[#384bff]",
+    "bg-[#2d3de6]",
+    "bg-[#0f172a]",
+    "bg-[#059669]",
   ];
 
   return (
@@ -508,27 +577,27 @@ export function LeadFunnelChart({
         <div key={s.stage}>
           <TenantLink
             href={`/dashboard/leads?status=${encodeURIComponent(s.stage)}`}
-            className="flex items-center gap-3 group rounded-lg py-1.5 px-2 -mx-2 hover:bg-indigo-50/40 transition-colors"
+            className="flex items-center gap-3 group rounded-lg py-1.5 px-2 -mx-2 hover:bg-brand-muted/70 transition-colors"
           >
             <div className="w-20 shrink-0">
-              <p className="text-xs font-semibold text-slate-700 group-hover:text-indigo-700">{s.label}</p>
+              <p className="text-xs font-semibold text-slate-700 group-hover:text-brand">{s.label}</p>
               <p className="text-base font-bold text-slate-900 tabular-nums">{s.count}</p>
             </div>
             <div className="flex-1 h-2.5 rounded-full bg-slate-100 overflow-hidden">
               <div
-                className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-300", funnelColors[i % funnelColors.length])}
+                className={cn("h-full rounded-full transition-all duration-300", funnelColors[i % funnelColors.length])}
                 style={{ width: `${Math.max((s.count / max) * 100, s.count > 0 ? 4 : 0)}%` }}
               />
             </div>
           </TenantLink>
           {s.conversionPct !== null && i < stages.length - 1 && (
-            <p className="text-[10px] font-medium text-indigo-500 pl-[5.5rem] py-0.5">↓ {s.conversionPct}% conversion</p>
+            <p className="text-[10px] font-medium text-brand pl-[5.5rem] py-0.5">↓ {s.conversionPct}% conversion</p>
           )}
         </div>
       ))}
       <div className="pt-3 mt-1 border-t border-slate-100 flex items-center justify-between">
         <span className="text-xs text-slate-500">Overall conversion</span>
-        <span className="text-sm font-bold text-indigo-700 tabular-nums">{overallConversion}%</span>
+          <span className="text-sm font-bold text-brand tabular-nums">{overallConversion}%</span>
       </div>
     </div>
   );
@@ -572,11 +641,11 @@ export function ForecastPanel({
       <div className="pt-3 border-t border-slate-100">
         <div className="flex justify-between text-xs font-semibold text-slate-600 mb-2">
           <span>Forecast attainment</span>
-          <span className="text-indigo-700">{attainmentPct}%</span>
+          <span className="text-brand">{attainmentPct}%</span>
         </div>
         <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-700"
+            className="h-full rounded-full bg-brand transition-all duration-500"
             style={{ width: `${Math.min(100, attainmentPct)}%` }}
           />
         </div>
@@ -608,13 +677,13 @@ export function TargetProgress({
           <p className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight mt-0.5">{fmt(target)}</p>
         </div>
         <div className="text-right">
-          <p className="text-3xl font-bold text-indigo-600 tabular-nums">{pct}%</p>
+          <p className="text-3xl font-bold text-brand tabular-nums">{pct}%</p>
           <p className="text-[10px] text-slate-400 font-medium">achieved</p>
         </div>
       </div>
       <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden shadow-inner">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500 transition-all duration-700"
+          className="h-full rounded-full bg-brand transition-all duration-500"
           style={{ width: `${Math.min(100, pct)}%` }}
         />
       </div>
@@ -645,14 +714,14 @@ export function AiBriefCard({
     n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : `₹${(n / 1000).toFixed(0)}K`;
 
   return (
-    <div className="dash-ai-glow rounded-2xl p-5 space-y-3">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
+        <div className="h-8 w-8 rounded-lg bg-brand flex items-center justify-center">
           <Sparkles className="h-4 w-4 text-white" />
         </div>
         <div>
-          <p className="text-sm font-bold text-slate-900">AI Sales Brief</p>
-          <p className="text-[11px] text-slate-500">Personalized actions for your pipeline</p>
+          <p className="text-sm font-semibold text-slate-900">Priority actions</p>
+          <p className="text-[11px] text-slate-500">Recommended next steps for at-risk deals</p>
         </div>
       </div>
       <div className="grid sm:grid-cols-2 gap-3">
@@ -661,13 +730,13 @@ export function AiBriefCard({
             <p className="text-sm font-semibold text-slate-900 truncate" title={item.dealName}>
               {item.dealName}
             </p>
-            <p className="text-xs text-indigo-600 font-medium mt-0.5">
+            <p className="text-xs text-brand font-medium mt-0.5">
               {fmt(item.amount)} · {item.stage}
             </p>
             <p className="text-xs text-slate-600 mt-2 leading-relaxed">{item.recommendation}</p>
             <TenantLink
               href={`/dashboard/deals/${item.dealId}`}
-              className="inline-flex items-center gap-1 mt-3 text-xs font-bold text-indigo-600 hover:text-indigo-700"
+              className="inline-flex items-center gap-1 mt-3 text-xs font-bold text-brand hover:text-brand-dark"
             >
               Follow up →
             </TenantLink>
@@ -727,13 +796,13 @@ export function SalesPerformanceTable({
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.userId} className={cn("border-b border-slate-50 hover:bg-indigo-50/30 transition-colors", i === 0 && "bg-indigo-50/20")}>
+              <tr key={r.userId} className={cn("border-b border-slate-50 hover:bg-brand-muted/50 transition-colors", i === 0 && "bg-brand-muted/40")}>
                 <td className="px-5 py-3 font-semibold text-slate-900">{r.name}</td>
                 <td className="px-2 py-3 text-right tabular-nums text-slate-700">{r.leads}</td>
                 <td className="px-2 py-3 text-right tabular-nums text-slate-700">{r.qualified}</td>
                 <td className="px-2 py-3 text-right tabular-nums text-slate-700">{r.deals}</td>
                 <td className="px-2 py-3 text-right tabular-nums text-slate-700">{r.won}</td>
-                <td className="px-5 py-3 text-right tabular-nums font-bold text-indigo-700">{fmt(r.revenue)}</td>
+                <td className="px-5 py-3 text-right tabular-nums font-bold text-brand">{fmt(r.revenue)}</td>
               </tr>
             ))}
           </tbody>
@@ -765,8 +834,8 @@ export function LeadSourceTable({
   return (
     <div>
       {bestSource && (
-        <div className="px-5 py-2.5 border-b border-slate-100 bg-indigo-50/40 text-xs font-semibold text-slate-600">
-          Best source → <strong className="text-indigo-700">{bestSource}</strong>
+        <div className="px-5 py-2.5 border-b border-slate-100 bg-brand-muted/60 text-xs font-semibold text-slate-600">
+          Best source → <strong className="text-brand">{bestSource}</strong>
         </div>
       )}
       <div className="overflow-x-auto">
@@ -782,11 +851,11 @@ export function LeadSourceTable({
           </thead>
           <tbody>
             {rows.slice(0, 6).map((r) => (
-              <tr key={r.source} className="border-b border-slate-50 hover:bg-indigo-50/30 transition-colors">
+              <tr key={r.source} className="border-b border-slate-50 hover:bg-brand-muted/50 transition-colors">
                 <td className="px-5 py-3">
                   <TenantLink
                     href={`/dashboard/leads?source=${encodeURIComponent(r.source)}`}
-                    className="font-semibold text-slate-900 hover:text-indigo-700 transition-colors"
+                    className="font-semibold text-slate-900 hover:text-brand transition-colors"
                   >
                     {r.source}
                   </TenantLink>
@@ -817,10 +886,10 @@ export function QuickActionBtn({
     <TenantLink
       href={href}
       className={cn(
-        "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-200",
+          "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors",
         primary
-          ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-200/50 hover:shadow-lg hover:shadow-indigo-300/50 hover:brightness-105"
-          : "border border-slate-200/90 bg-white/90 text-slate-700 hover:bg-white hover:border-indigo-200 hover:shadow-sm"
+          ? "bg-brand text-white hover:bg-brand-dark"
+          : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300"
       )}
     >
       {children}
@@ -855,13 +924,13 @@ export function QuickActionTile({
   return (
     <TenantLink
       href={href}
-      className="group flex items-start gap-3 bg-white px-5 py-4 hover:bg-gradient-to-br hover:from-indigo-50/80 hover:to-white transition-all duration-200 border-b border-r border-slate-100 last:border-b-0"
+      className="group flex items-start gap-3 bg-white px-5 py-4 hover:bg-brand-muted/40 transition-colors border-b border-r border-slate-100 last:border-b-0"
     >
-      <div className={cn("h-10 w-10 rounded-xl bg-gradient-to-br flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform", accent)}>
+      <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", accent)}>
         <Icon className="h-5 w-5 text-white" strokeWidth={2} />
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">{label}</p>
+        <p className="text-sm font-semibold text-slate-900 group-hover:text-brand transition-colors">{label}</p>
         <p className="text-xs text-slate-500 mt-0.5">{sub}</p>
       </div>
     </TenantLink>

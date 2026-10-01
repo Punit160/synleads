@@ -43,3 +43,26 @@ export function tenantPortalLabel(slug: string): string {
   }
   return `/${slug}`;
 }
+
+/** Public origin of the company product URL (subdomain when enabled, otherwise FRONTEND_URL). */
+export function tenantAppOrigin(slug?: string | null): string {
+  if (slug && isSubdomainTenancyEnabled()) {
+    return tenantOrigin(slug);
+  }
+  const frontend = process.env.FRONTEND_URL || "http://localhost:3000";
+  try {
+    return new URL(frontend).origin;
+  } catch {
+    return "http://localhost:3000";
+  }
+}
+
+export function companyPortalUrl(slug: string): string {
+  if (isSubdomainTenancyEnabled()) return `${tenantOrigin(slug)}/dashboard`;
+  return `${tenantAppOrigin(slug)}/${slug}/dashboard`;
+}
+
+/** Company-scoped public webhook on the product host — never a shared backend URL. */
+export function companyWebhookUrl(slug: string, kind: "leads" | "inbound-email"): string {
+  return `${tenantAppOrigin(slug)}/api/public/${slug}/${kind}`;
+}

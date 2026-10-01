@@ -47,6 +47,9 @@ export const FOLLOWUP_TYPES = [
   { value: "whatsapp", label: "WhatsApp" },
   { value: "video_call", label: "Video Call" },
   { value: "site_visit", label: "Site visit" },
+  { value: "demo", label: "Demo" },
+  { value: "proposal", label: "Proposal" },
+  { value: "other", label: "Other" },
 ] as const;
 
 export const FOLLOWUP_TYPE_LABELS: Record<string, string> = {
@@ -56,6 +59,9 @@ export const FOLLOWUP_TYPE_LABELS: Record<string, string> = {
   whatsapp: "WhatsApp",
   video_call: "Video call",
   site_visit: "Site visit",
+  demo: "Demo",
+  proposal: "Proposal",
+  other: "Other",
 };
 
 export const ACTIVITY_TYPES = [

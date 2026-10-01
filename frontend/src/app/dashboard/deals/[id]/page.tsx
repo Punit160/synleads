@@ -110,7 +110,7 @@ export default function DealDetailPage() {
             <div className="flex justify-between gap-4">
               <span className="text-slate-500">Account</span>
               {deal.account ? (
-                <TenantLink href={`/dashboard/accounts/${deal.account.id}`} className="font-medium text-blue-600 hover:underline">
+                <TenantLink href={`/dashboard/accounts/${deal.account.id}`} className="font-medium text-brand hover:underline">
                   {deal.account.name}
                 </TenantLink>
               ) : (
@@ -120,7 +120,7 @@ export default function DealDetailPage() {
             <div className="flex justify-between gap-4">
               <span className="text-slate-500">Contact</span>
               {deal.contact ? (
-                <TenantLink href={`/dashboard/contacts/${deal.contact.id}`} className="font-medium text-blue-600 hover:underline">
+                <TenantLink href={`/dashboard/contacts/${deal.contact.id}`} className="font-medium text-brand hover:underline">
                   {deal.contact.firstName} {deal.contact.lastName}
                 </TenantLink>
               ) : (

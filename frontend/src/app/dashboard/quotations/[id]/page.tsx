@@ -115,7 +115,7 @@ export default function QuotationDetailPage() {
             {quote.lead && (
               <div className="flex justify-between gap-4 pt-2 border-t">
                 <span className="text-slate-500">Lead</span>
-                <TenantLink href={`/dashboard/leads/${quote.lead.id}`} className="font-medium text-blue-600 hover:underline">
+                <TenantLink href={`/dashboard/leads/${quote.lead.id}`} className="font-medium text-brand hover:underline">
                   {quote.lead.leadNumber}
                 </TenantLink>
               </div>

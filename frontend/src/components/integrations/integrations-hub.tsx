@@ -6,6 +6,7 @@ import { TenantLink } from "@/components/ui/tenant-link";
 import {
   Plug,
   Mail,
+  Inbox,
   MessageCircle,
   Smartphone,
   Globe,
@@ -55,6 +56,7 @@ type IntegrationsResponse = {
   webhookHeader: string;
   loginPath?: string | null;
   portalPath?: string | null;
+  portalUrl?: string | null;
   integrations: IntegrationItem[];
 };
 
@@ -62,6 +64,7 @@ const CATEGORY_ORDER = ["Communication", "Lead Source", "Automation"] as const;
 
 const ICONS: Record<string, typeof Mail> = {
   email: Mail,
+  email_inbox: Inbox,
   whatsapp: MessageCircle,
   sms: Smartphone,
   indiamart: Megaphone,
@@ -152,8 +155,10 @@ export function IntegrationsHub() {
   const [tenant, setTenant] = useState<{
     workspaceId: string;
     workspaceName: string;
+    workspaceSlug?: string | null;
     leadApiKey: string | null;
     webhookUrl: string;
+    portalUrl?: string | null;
   } | null>(null);
 
   const load = useCallback(async () => {
@@ -167,8 +172,10 @@ export function IntegrationsHub() {
     setTenant({
       workspaceId: integrationsRes.workspaceId,
       workspaceName: integrationsRes.workspaceName,
+      workspaceSlug: integrationsRes.workspaceSlug,
       leadApiKey: integrationsRes.leadApiKey,
       webhookUrl: integrationsRes.webhookUrl,
+      portalUrl: integrationsRes.portalUrl,
     });
     setAutomation(auto);
   }, [canConfigure]);
@@ -219,17 +226,25 @@ export function IntegrationsHub() {
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">{tenant?.workspaceName || auth.workspace?.name}</p>
             <p className="text-xs text-slate-500 mt-0.5">
-              Connect email, ads, forms, and messaging for your sales team.
+              Connect email, ads, forms, and messaging for {tenant?.workspaceName || "your company"} only. Lead data is never shared with another workspace.
             </p>
           </div>
         </div>
       </div>
 
       {canConfigure && (tenant?.leadApiKey || automation?.leadApiKey) && (
-        <Panel title="Lead capture credentials" subtitle="Use these in website forms, IndiaMART, Google Ads, Zapier, and other lead sources">
+        <Panel title="Lead capture credentials" subtitle="These URLs belong only to this company portal">
           <div className="space-y-3 text-sm p-4">
+            {tenant?.portalUrl && (
+              <div>
+                <p className="text-[11px] font-medium text-slate-500 mb-1">Company portal</p>
+                <code className="block text-xs break-all bg-slate-50 border border-slate-200 rounded px-2 py-1.5">
+                  {tenant.portalUrl}
+                </code>
+              </div>
+            )}
             <div>
-              <p className="text-[11px] font-medium text-slate-500 mb-1">Webhook URL</p>
+              <p className="text-[11px] font-medium text-slate-500 mb-1">Company webhook URL</p>
               <div className="flex gap-2">
                 <code className="flex-1 text-xs break-all bg-slate-50 border border-slate-200 rounded px-2 py-1.5">
                   {tenant?.webhookUrl || automation?.webhookUrl}
@@ -238,6 +253,7 @@ export function IntegrationsHub() {
                   {copied === "wh" ? "Copied" : "Copy"}
                 </BtnSecondary>
               </div>
+              <p className="text-[11px] text-slate-500 mt-1">Includes your company slug so inbound leads stay in this workspace.</p>
             </div>
             <div>
               <p className="text-[11px] font-medium text-slate-500 mb-1">API key (header: {automation?.webhookHeader || WEBHOOK_API_KEY_HEADER})</p>
@@ -335,6 +351,7 @@ export function IntegrationsHub() {
       <Panel title="Need help connecting?">
         <ul className="text-sm text-slate-600 space-y-2 list-disc list-inside">
           <li>Click <strong>Connect & setup</strong> on any card — a guided wizard opens with step-by-step instructions.</li>
+          <li>For email marketing: connect <strong>Email Inbox (Lead capture)</strong> so enquiry emails become leads automatically.</li>
           <li>For Website, IndiaMART, Facebook, Google Ads, and LinkedIn — use your company webhook URL and unique API key above.</li>
           <li>Full documentation: <TenantLink href="/dashboard/manual" className="text-blue-600 hover:underline">User Manual → Integrations</TenantLink></li>
         </ul>

@@ -9,7 +9,7 @@ import { getAuthenticatedContext, requirePermission } from "../lib/rbac";
 import { ensureWorkspaceLeadApiKey } from "../lib/workspace-lead-key";
 import { PRODUCT_NAME, WEBHOOK_API_KEY_HEADER } from "../lib/brand";
 import { ensureWorkspaceSlug } from "../lib/workspace-slug";
-import { tenantPortalLoginUrl } from "../lib/tenant-url";
+import { tenantPortalLoginUrl, companyWebhookUrl } from "../lib/tenant-url";
 
 const router = Router();
 
@@ -299,7 +299,6 @@ router.get("/automation", async (req, res) => {
       return;
     }
     const workspaceSlug = await ensureWorkspaceSlug(ws.id, ws.name);
-    const apiBase = process.env.API_PUBLIC_URL || "http://localhost:4001";
     res.json({
       workspaceId: ws.id,
       workspaceName: ws.name,
@@ -307,7 +306,7 @@ router.get("/automation", async (req, res) => {
       autoAssignEnabled: ws.autoAssignEnabled,
       autoAssignMode: ws.autoAssignMode,
       leadApiKey,
-      webhookUrl: `${apiBase}/api/public/${workspaceSlug}/leads`,
+      webhookUrl: companyWebhookUrl(workspaceSlug, "leads"),
       loginPath: tenantPortalLoginUrl(workspaceSlug),
       portalPath: `/${workspaceSlug}/dashboard`,
       webhookHeader: WEBHOOK_API_KEY_HEADER,

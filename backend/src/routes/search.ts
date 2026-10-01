@@ -36,6 +36,8 @@ router.get("/", async (req, res) => {
             { phone: { contains: q } },
             { company: { contains: q } },
             { leadNumber: { contains: q } },
+            { notes: { contains: q } },
+            { leadNotes: { some: { content: { contains: q } } } },
           ],
         },
         take: 8,

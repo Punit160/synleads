@@ -142,7 +142,7 @@ export default function NewQuotationPage() {
                 <span>GST</span>
                 <span className="font-semibold tabular-nums">{formatCurrency(totals.taxAmount)}</span>
               </div>
-              <div className="flex justify-between text-base font-bold text-indigo-700 pt-2 border-t border-slate-200">
+              <div className="flex justify-between text-base font-bold text-brand pt-2 border-t border-slate-200">
                 <span>Grand total</span>
                 <span className="tabular-nums">{formatCurrency(totals.total)}</span>
               </div>

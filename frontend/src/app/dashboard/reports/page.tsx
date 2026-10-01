@@ -7,7 +7,7 @@ import { apiFetch, ApiError, formatCurrency, formatDate } from "@/lib/api";
 import { LEAD_STATUS_LABELS } from "@/lib/lead-constants";
 import { REPORT_TABS } from "@/lib/crm-constants";
 import { PageHeader, Panel, ProTable, Th, Td, PageLoader, BtnSecondary } from "@/components/ui/dashboard-ui";
-import { KpiCard, BarChartList, PipelineBars } from "@/components/ui/dashboard-charts";
+import { KpiCard, BarChartList, PipelineBars, STATUS_CHART_COLORS } from "@/components/ui/dashboard-charts";
 import { Trophy, XCircle, Kanban, Target, TrendingUp, Users, CalendarClock, AlertTriangle, RefreshCw } from "lucide-react";
 
 type FullReports = {
@@ -74,7 +74,7 @@ export default function ReportsPage() {
       <div className="max-w-lg mx-auto py-16 text-center">
         <h1 className="text-lg font-semibold text-slate-900 mb-2">Reports access restricted</h1>
         <p className="text-sm text-slate-500 mb-4">Your role does not include permission to view reports.</p>
-        <TenantLink href="/dashboard" className="text-sm text-blue-600 hover:underline">Back to dashboard</TenantLink>
+        <TenantLink href="/dashboard" className="text-sm text-brand hover:underline">Back to dashboard</TenantLink>
       </div>
     );
   }
@@ -122,7 +122,7 @@ export default function ReportsPage() {
             type="button"
             onClick={() => setTab(t.id)}
             className={`px-3 py-2 text-xs font-semibold whitespace-nowrap border-b-2 -mb-px transition-colors ${
-              tab === t.id ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700"
+              tab === t.id ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
             {t.label}
@@ -145,8 +145,27 @@ export default function ReportsPage() {
             <KpiCard label="Total Leads" value={statusTotal} sub={`${reports.conversionReport.rate}% converted`} icon={Target} theme="blue" />
           </div>
           <div className="grid lg:grid-cols-2 gap-4">
-            <Panel title="Lead Status" noPadding><BarChartList items={reports.leadsByStatus.sort((a,b)=>b.count-a.count).map(r=>({label:LEAD_STATUS_LABELS[r.status]||r.status,value:r.count,pct:(r.count/statusTotal)*100}))} /></Panel>
-            <Panel title="Lead Sources" noPadding><BarChartList items={reports.leadsBySource.sort((a,b)=>b.count-a.count).map(r=>({label:r.source,value:r.count,pct:(r.count/sourceTotal)*100}))} /></Panel>
+            <Panel title="Lead Status" noPadding>
+              <BarChartList
+                items={reports.leadsByStatus.sort((a,b)=>b.count-a.count).map((r)=>({
+                  label: LEAD_STATUS_LABELS[r.status]||r.status,
+                  value: r.count,
+                  pct: (r.count/statusTotal)*100,
+                  barClass: STATUS_CHART_COLORS[r.status],
+                  href: `/dashboard/leads?status=${encodeURIComponent(r.status)}`,
+                }))}
+              />
+            </Panel>
+            <Panel title="Lead Sources" noPadding>
+              <BarChartList
+                items={reports.leadsBySource.sort((a,b)=>b.count-a.count).map((r)=>({
+                  label: r.source,
+                  value: r.count,
+                  pct: (r.count/sourceTotal)*100,
+                  href: `/dashboard/leads?source=${encodeURIComponent(r.source)}`,
+                }))}
+              />
+            </Panel>
           </div>
           <Panel title="Pipeline Stages" noPadding><PipelineBars stages={openStages.map(s=>({name:s.name,dealCount:s.dealCount,totalValue:s.totalValue}))} totalValue={pipelineTotal} /></Panel>
         </>
@@ -159,7 +178,11 @@ export default function ReportsPage() {
             <tbody>
               {reports.leadsBySource.sort((a,b)=>b.count-a.count).map(r=>(
                 <tr key={r.source} className="hover:bg-slate-50">
-                  <Td className="font-medium !text-slate-900">{r.source}</Td>
+                  <Td className="font-medium !text-slate-900">
+                    <TenantLink href={`/dashboard/leads?source=${encodeURIComponent(r.source)}`} className="hover:underline">
+                      {r.source}
+                    </TenantLink>
+                  </Td>
                   <Td className="text-right font-semibold">{r.count}</Td>
                   <Td className="text-right text-slate-500">{((r.count/sourceTotal)*100).toFixed(1)}%</Td>
                 </tr>
@@ -171,11 +194,20 @@ export default function ReportsPage() {
 
       {tab === "conversion" && (
         <div className="grid lg:grid-cols-2 gap-4">
-          <Panel title="Conversion Summary">
-            <div className="grid grid-cols-3 gap-4 p-4">
-              <div><p className="text-xs text-slate-500">Total Leads</p><p className="text-2xl font-bold text-blue-700">{reports.conversionReport.totalLeads}</p></div>
-              <div><p className="text-xs text-slate-500">Converted</p><p className="text-2xl font-bold text-emerald-700">{reports.conversionReport.converted}</p></div>
-              <div><p className="text-xs text-slate-500">Rate</p><p className="text-2xl font-bold text-violet-700">{reports.conversionReport.rate}%</p></div>
+          <Panel title="Conversion Summary" noPadding>
+            <div className="grid grid-cols-3 gap-3 p-4">
+              <div className="rounded-[10px] border border-slate-200/90 bg-white px-3 py-3">
+                <p className="text-[11px] font-semibold text-slate-500">Total Leads</p>
+                <p className="text-2xl font-semibold tabular-nums text-slate-900 mt-1">{reports.conversionReport.totalLeads}</p>
+              </div>
+              <div className="rounded-[10px] border border-emerald-100 bg-emerald-50/40 px-3 py-3">
+                <p className="text-[11px] font-semibold text-emerald-700">Converted</p>
+                <p className="text-2xl font-semibold tabular-nums text-emerald-800 mt-1">{reports.conversionReport.converted}</p>
+              </div>
+              <div className="rounded-[10px] border border-brand-light bg-brand-muted/50 px-3 py-3">
+                <p className="text-[11px] font-semibold text-brand">Rate</p>
+                <p className="text-2xl font-semibold tabular-nums text-brand mt-1">{reports.conversionReport.rate}%</p>
+              </div>
             </div>
           </Panel>
           <Panel title="Conversion by Source" noPadding>
@@ -240,7 +272,7 @@ export default function ReportsPage() {
           </div>
           <p className="text-xs text-slate-500">
             Configure assignment rules and teams on the{" "}
-            <TenantLink href="/dashboard/assignment" className="text-blue-600 hover:underline">Lead Assignment</TenantLink> page.
+            <TenantLink href="/dashboard/assignment" className="text-brand hover:underline">Lead Assignment</TenantLink> page.
           </p>
         </>
       )}
@@ -309,16 +341,31 @@ export default function ReportsPage() {
           </div>
           <div className="grid lg:grid-cols-2 gap-4">
             <Panel title="Won Summary" noPadding>
-              <div className="p-4 grid grid-cols-3 gap-4">
-                <div><p className="text-xs text-slate-500">Won Leads</p><p className="text-2xl font-bold text-emerald-700">{reports.won.leadCount}</p></div>
-                <div><p className="text-xs text-slate-500">Won Deals</p><p className="text-2xl font-bold text-emerald-700">{reports.won.count}</p></div>
-                <div><p className="text-xs text-slate-500">Revenue</p><p className="text-2xl font-bold text-emerald-700">{formatCurrency(reports.won.revenue)}</p></div>
+              <div className="p-4 grid grid-cols-3 gap-3">
+                <div className="rounded-[10px] border border-emerald-100 bg-emerald-50/40 px-3 py-3">
+                  <p className="text-[11px] font-semibold text-emerald-700">Won Leads</p>
+                  <p className="text-2xl font-semibold tabular-nums text-emerald-800 mt-1">{reports.won.leadCount}</p>
+                </div>
+                <div className="rounded-[10px] border border-emerald-100 bg-white px-3 py-3">
+                  <p className="text-[11px] font-semibold text-slate-500">Won Deals</p>
+                  <p className="text-2xl font-semibold tabular-nums text-slate-900 mt-1">{reports.won.count}</p>
+                </div>
+                <div className="rounded-[10px] border border-emerald-100 bg-white px-3 py-3">
+                  <p className="text-[11px] font-semibold text-slate-500">Revenue</p>
+                  <p className="text-xl font-semibold tabular-nums text-emerald-800 mt-1">{formatCurrency(reports.won.revenue)}</p>
+                </div>
               </div>
             </Panel>
             <Panel title="Lost Deals" noPadding>
-              <div className="p-4 grid grid-cols-2 gap-4">
-                <div><p className="text-xs text-slate-500">Count</p><p className="text-2xl font-bold text-rose-700">{reports.lost.count}</p></div>
-                <div><p className="text-xs text-slate-500">Value</p><p className="text-2xl font-bold text-rose-700">{formatCurrency(reports.lost.value)}</p></div>
+              <div className="p-4 grid grid-cols-2 gap-3">
+                <div className="rounded-[10px] border border-rose-100 bg-rose-50/40 px-3 py-3">
+                  <p className="text-[11px] font-semibold text-rose-700">Count</p>
+                  <p className="text-2xl font-semibold tabular-nums text-rose-700 mt-1">{reports.lost.count}</p>
+                </div>
+                <div className="rounded-[10px] border border-slate-200/90 bg-white px-3 py-3">
+                  <p className="text-[11px] font-semibold text-slate-500">Value</p>
+                  <p className="text-xl font-semibold tabular-nums text-slate-900 mt-1">{formatCurrency(reports.lost.value)}</p>
+                </div>
               </div>
             </Panel>
           </div>
@@ -353,10 +400,19 @@ export default function ReportsPage() {
 
       {tab === "monthly" && (
         <Panel title={`Monthly Report — ${reports.monthlyReport.month}`}>
-          <div className="grid sm:grid-cols-3 gap-6 p-4">
-            <div><p className="text-xs text-slate-500 uppercase">New Leads</p><p className="text-3xl font-bold text-blue-700 tabular-nums">{reports.monthlyReport.newLeads}</p></div>
-            <div><p className="text-xs text-slate-500 uppercase">Deals Created</p><p className="text-3xl font-bold text-violet-700 tabular-nums">{reports.monthlyReport.dealsCreated}</p></div>
-            <div><p className="text-xs text-slate-500 uppercase">Revenue</p><p className="text-3xl font-bold text-emerald-700 tabular-nums">{formatCurrency(reports.monthlyReport.revenue)}</p></div>
+          <div className="grid sm:grid-cols-3 gap-4 p-4">
+            <div className="rounded-[10px] border border-slate-200/90 bg-white px-4 py-3">
+              <p className="text-[11px] font-semibold text-slate-500">New Leads</p>
+              <p className="text-3xl font-semibold text-slate-900 tabular-nums mt-1">{reports.monthlyReport.newLeads}</p>
+            </div>
+            <div className="rounded-[10px] border border-brand-light bg-brand-muted/40 px-4 py-3">
+              <p className="text-[11px] font-semibold text-brand">Deals Created</p>
+              <p className="text-3xl font-semibold text-brand tabular-nums mt-1">{reports.monthlyReport.dealsCreated}</p>
+            </div>
+            <div className="rounded-[10px] border border-emerald-100 bg-emerald-50/40 px-4 py-3">
+              <p className="text-[11px] font-semibold text-emerald-700">Revenue</p>
+              <p className="text-2xl font-semibold text-emerald-800 tabular-nums mt-1">{formatCurrency(reports.monthlyReport.revenue)}</p>
+            </div>
           </div>
         </Panel>
       )}

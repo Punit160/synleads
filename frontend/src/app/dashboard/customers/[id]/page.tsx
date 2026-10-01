@@ -74,7 +74,7 @@ export default function CustomerDetailPage() {
             {customer.lead && (
               <div className="flex justify-between gap-4 pt-2 border-t border-slate-100">
                 <span className="text-slate-500">Source Lead</span>
-                <TenantLink href={`/dashboard/leads/${customer.lead.id}`} className="font-mono text-xs text-blue-600 hover:underline">
+                <TenantLink href={`/dashboard/leads/${customer.lead.id}`} className="font-mono text-xs text-brand hover:underline">
                   {customer.lead.leadNumber}
                 </TenantLink>
               </div>

@@ -252,7 +252,7 @@ export default function AutomationPage() {
             onClick={() => setTab(id)}
             className={cn(
               "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition",
-              tab === id ? "bg-indigo-600 text-white shadow-sm" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+              tab === id ? "bg-brand text-white shadow-sm" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
             )}
           >
             <Icon className="h-4 w-4" />
@@ -284,7 +284,7 @@ export default function AutomationPage() {
                     <Td>{w.priority}</Td>
                     <Td>{w.isActive ? "Active" : "Paused"}</Td>
                     <Td className="text-right">
-                      <button type="button" className="text-indigo-600 mr-2" onClick={() => setWfForm({ ...wfForm, id: w.id, name: w.name, trigger: w.trigger, priority: w.priority, isActive: w.isActive })}>
+                      <button type="button" className="text-brand mr-2" onClick={() => setWfForm({ ...wfForm, id: w.id, name: w.name, trigger: w.trigger, priority: w.priority, isActive: w.isActive })}>
                         <Pencil className="h-4 w-4 inline" />
                       </button>
                       <button type="button" className="text-red-600" onClick={async () => { await apiFetch(`/api/automation/workflows/${w.id}`, { method: "DELETE" }); await loadAll(); }}>
@@ -350,7 +350,7 @@ export default function AutomationPage() {
                     <Td>{r.operator} {r.value ?? "—"}</Td>
                     <Td className={r.points >= 0 ? "text-emerald-600" : "text-red-600"}>{r.points > 0 ? "+" : ""}{r.points}</Td>
                     <Td className="text-right">
-                      <button type="button" className="text-indigo-600 mr-2" onClick={() => setScoreForm({ id: r.id, name: r.name, field: r.field, operator: r.operator, value: r.value ?? "", points: r.points, priority: r.priority })}><Pencil className="h-4 w-4 inline" /></button>
+                      <button type="button" className="text-brand mr-2" onClick={() => setScoreForm({ id: r.id, name: r.name, field: r.field, operator: r.operator, value: r.value ?? "", points: r.points, priority: r.priority })}><Pencil className="h-4 w-4 inline" /></button>
                       <button type="button" className="text-red-600" onClick={async () => { await apiFetch(`/api/automation/scoring-rules/${r.id}`, { method: "DELETE" }); await loadAll(); }}><Trash2 className="h-4 w-4 inline" /></button>
                     </Td>
                   </tr>
@@ -429,7 +429,7 @@ export default function AutomationPage() {
                     <Td>{f.fieldType}</Td>
                     <Td>{f.required ? "Yes" : "No"}</Td>
                     <Td className="text-right">
-                      <button type="button" className="text-indigo-600 mr-2" onClick={() => setFieldForm({ id: f.id, key: f.key, label: f.label, fieldType: f.fieldType, options: (f.options || []).join(", "), required: f.required })}><Pencil className="h-4 w-4 inline" /></button>
+                      <button type="button" className="text-brand mr-2" onClick={() => setFieldForm({ id: f.id, key: f.key, label: f.label, fieldType: f.fieldType, options: (f.options || []).join(", "), required: f.required })}><Pencil className="h-4 w-4 inline" /></button>
                       <button type="button" className="text-red-600" onClick={async () => { await apiFetch(`/api/custom-fields/definitions/${f.id}`, { method: "DELETE" }); await loadAll(); }}><Trash2 className="h-4 w-4 inline" /></button>
                     </Td>
                   </tr>

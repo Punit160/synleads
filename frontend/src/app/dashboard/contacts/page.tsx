@@ -149,7 +149,7 @@ export default function ContactsPage() {
               {filtered.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50">
                   <Td className="font-medium">
-                    <TenantLink href={`/dashboard/contacts/${c.id}`} className="text-slate-900 hover:text-blue-600 hover:underline">
+                    <TenantLink href={`/dashboard/contacts/${c.id}`} className="text-slate-900 hover:text-brand hover:underline">
                       {c.firstName} {c.lastName}
                     </TenantLink>
                   </Td>

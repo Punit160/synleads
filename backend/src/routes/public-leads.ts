@@ -1,12 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
-import { generateLeadNumber, findDuplicateLeads, addTimelineEvent } from "../lib/lead-utils";
-import { pickLeadOwner } from "../lib/auto-assign";
-import { recordAuditLog } from "../lib/audit-log";
-import { notifyLeadAssigned } from "../lib/reminder-jobs";
-import { onLeadCreated } from "../lib/lead-automation";
-import { LEAD_SOURCES } from "../lib/lead-constants";
+import { ingestInboundLead } from "../lib/inbound-lead";
 import { ensureWorkspaceSlug } from "../lib/workspace-slug";
 import { readWebhookApiKey } from "../lib/brand";
 
@@ -52,73 +47,14 @@ async function createInboundLead(
   data: z.infer<typeof publicLeadSchema>,
   sourceDefault: string
 ) {
-  const dups = await findDuplicateLeads(workspace.id, data.email, data.phone);
-  if (dups.length > 0) {
-    return { error: "duplicate" as const, duplicateId: dups[0].id };
-  }
-
-  const ownerId = await pickLeadOwner(workspace.id, null, {
-    source: data.source || sourceDefault,
-    city: data.city,
-    state: data.state,
-    requirement: data.requirement,
+  return ingestInboundLead({
+    workspace,
+    data,
+    sourceDefault,
+    auditAction: "lead_webhook_create",
+    timelineDescription: `Inbound from ${data.source || sourceDefault} (webhook)`,
+    onDuplicate: "reject",
   });
-  const leadNumber = await generateLeadNumber(workspace.id);
-  const source =
-    data.source && LEAD_SOURCES.includes(data.source as (typeof LEAD_SOURCES)[number])
-      ? data.source
-      : sourceDefault;
-
-  const lead = await prisma.lead.create({
-    data: {
-      workspaceId: workspace.id,
-      ownerId,
-      leadNumber,
-      firstName: data.firstName,
-      lastName: data.lastName || null,
-      email: data.email || null,
-      phone: data.phone || null,
-      company: data.company || null,
-      city: data.city || null,
-      state: data.state || null,
-      source,
-      requirement: data.requirement || null,
-      budget: data.budget ?? null,
-      remarks: data.remarks || null,
-      status: ownerId ? "assigned" : "new",
-    },
-  });
-
-  await addTimelineEvent(
-    lead.id,
-    "created",
-    "Lead captured",
-    `Inbound from ${source} (webhook)`,
-    ownerId ?? undefined
-  );
-  await recordAuditLog({
-    workspaceId: workspace.id,
-    userId: null,
-    action: "lead_webhook_create",
-    entityType: "lead",
-    entityId: lead.id,
-    details: `Source: ${source}`,
-  });
-
-  if (ownerId) {
-    await notifyLeadAssigned({
-      workspaceId: workspace.id,
-      assigneeId: ownerId,
-      leadId: lead.id,
-      leadNumber,
-      leadName: `${data.firstName} ${data.lastName || ""}`.trim(),
-      assignedByName: "Inbound integration",
-    });
-  }
-
-  await onLeadCreated({ workspaceId: workspace.id, leadId: lead.id, actorUserId: ownerId });
-
-  return { lead, leadNumber, ownerId, source };
 }
 
 function readApiKey(req: { headers: Record<string, unknown>; query: Record<string, unknown> }) {
@@ -137,13 +73,13 @@ router.post("/leads", async (req, res) => {
 
     const data = publicLeadSchema.parse(req.body);
     const result = await createInboundLead(workspace, data, "API");
-    if ("error" in result && result.error === "duplicate") {
+    if ("error" in result) {
       res.status(409).json({ error: "Duplicate lead", duplicateId: result.duplicateId });
       return;
     }
 
     res.status(201).json({
-      id: result.lead!.id,
+      id: result.lead.id,
       leadNumber: result.leadNumber,
       ownerId: result.ownerId,
       workspaceSlug: workspace.slug,
@@ -174,13 +110,13 @@ router.post("/:slug/leads", async (req, res) => {
 
     const data = publicLeadSchema.parse(req.body);
     const result = await createInboundLead(workspace, data, "API");
-    if ("error" in result && result.error === "duplicate") {
+    if ("error" in result) {
       res.status(409).json({ error: "Duplicate lead", duplicateId: result.duplicateId });
       return;
     }
 
     res.status(201).json({
-      id: result.lead!.id,
+      id: result.lead.id,
       leadNumber: result.leadNumber,
       ownerId: result.ownerId,
       workspaceSlug: workspace.slug,

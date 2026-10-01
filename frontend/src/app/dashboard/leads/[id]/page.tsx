@@ -17,15 +17,18 @@ import {
   Paperclip,
   CalendarClock,
   Sparkles,
+  MessageCircle,
+  UserPlus,
 } from "lucide-react";
 import { apiFetch, ApiError, formatCurrency, formatDate, formatRelativeTime, apiUpload } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { LEAD_STATUS_LABELS, STATUS_BADGE, PRIORITY_BADGE, FOLLOWUP_TYPES } from "@/lib/lead-constants";
+import { LEAD_STATUS_LABELS, STATUS_BADGE, PRIORITY_BADGE, FOLLOWUP_TYPES, LEAD_STATUSES, LEAD_PRIORITIES } from "@/lib/lead-constants";
 import { cn } from "@/lib/utils";
 import { mergeLeadActivity, totalWorkCount } from "@/lib/lead-activity";
 import { LeadActivityFeed, ActivityStatChips } from "@/components/leads/lead-activity-feed";
 import { LeadQuickActions } from "@/components/leads/lead-quick-actions";
 import { PageLoader } from "@/components/ui/dashboard-ui";
+import { useToast } from "@/components/ui/toast";
 
 type Lead = {
   id: string;
@@ -55,7 +58,7 @@ type Lead = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
-  owner: { name: string } | null;
+  owner: { id?: string; name: string } | null;
   followUps: Array<{ id: string; type: string; scheduledAt: string; notes: string | null; completed: boolean; owner: { name: string } | null }>;
   communications: Array<{ id: string; channel: string; direction: string; subject: string | null; body: string | null; createdAt: string; owner: { name: string } | null }>;
   leadNotes: Array<{ id: string; content: string; createdAt: string; author: { name: string } | null }>;
@@ -95,6 +98,8 @@ function LeadDetailContent() {
   const canEdit = auth.hasPermission("edit");
   const canDelete = auth.hasPermission("delete");
   const canAdd = auth.hasPermission("add");
+  const canAssign = auth.hasPermission("assign");
+  const toast = useToast();
 
   const tabParam = searchParams.get("tab");
   const initialTab: TabId =
@@ -109,6 +114,9 @@ function LeadDetailContent() {
   const [followUpForm, setFollowUpForm] = useState({ type: "call", scheduledAt: "", notes: "" });
   const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const [assignable, setAssignable] = useState<Array<{ userId: string; name: string }>>([]);
+  const [completeId, setCompleteId] = useState<string | null>(null);
+  const [nextFollow, setNextFollow] = useState({ type: "call", scheduledAt: "", notes: "" });
 
   async function load() {
     setLead(await apiFetch<Lead>(`/api/leads/${id}`));
@@ -117,6 +125,12 @@ function LeadDetailContent() {
   useEffect(() => {
     load().catch(() => router.push(tp("/dashboard/leads")));
   }, [id, router]);
+
+  useEffect(() => {
+    if (canAssign) {
+      apiFetch<Array<{ userId: string; name: string }>>("/api/users/assignable").then(setAssignable).catch(() => {});
+    }
+  }, [canAssign]);
 
   useEffect(() => {
     setTab(initialTab);
@@ -136,8 +150,31 @@ function LeadDetailContent() {
     };
   }, [lead]);
 
-  async function completeFollowUp(followUpId: string) {
-    await apiFetch(`/api/followups/${followUpId}/complete`, { method: "PATCH" });
+  async function completeFollowUp(followUpId: string, scheduleNext = false) {
+    await apiFetch(`/api/followups/${followUpId}/complete`, {
+      method: "PATCH",
+      body: JSON.stringify(
+        scheduleNext && nextFollow.scheduledAt
+          ? { next: { type: nextFollow.type, scheduledAt: nextFollow.scheduledAt, notes: nextFollow.notes } }
+          : {}
+      ),
+    });
+    setCompleteId(null);
+    setNextFollow({ type: "call", scheduledAt: "", notes: "" });
+    toast.success("Follow-up updated");
+    await load();
+  }
+
+  async function updateLead(patch: Record<string, unknown>) {
+    await apiFetch(`/api/leads/${id}`, { method: "PUT", body: JSON.stringify(patch) });
+    toast.success("Lead updated");
+    await load();
+  }
+
+  async function assignLead(ownerId: string) {
+    if (!ownerId) return;
+    await apiFetch(`/api/leads/${id}/assign`, { method: "PATCH", body: JSON.stringify({ ownerId }) });
+    toast.success("Lead assigned");
     await load();
   }
 
@@ -197,7 +234,7 @@ function LeadDetailContent() {
   }
 
   const btn = "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-700 hover:bg-slate-50";
-  const btnPrimary = "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700";
+  const btnPrimary = "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-brand text-white hover:bg-brand-dark";
 
   const pendingFollowUps = lead.followUps.filter((f) => !f.completed);
 
@@ -208,7 +245,7 @@ function LeadDetailContent() {
       </TenantLink>
 
       {/* Header */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-[10px] border border-slate-200 bg-white p-5">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -223,8 +260,8 @@ function LeadDetailContent() {
                 <Sparkles className="h-3 w-3" /> Score {lead.score || "N/A"}
               </span>
             </div>
-            <h1 className="text-lg font-bold text-blue-800 leading-snug">{leadHeading(lead)}</h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <h1 className="text-[1.45rem] font-semibold text-slate-900 leading-snug tracking-tight">{leadHeading(lead)}</h1>
+            <p className="text-sm text-slate-500 mt-1.5">
               {lead.company || "No company"} · {lead.firstName} {lead.lastName} · Assigned: {lead.owner?.name || "Unassigned"}
             </p>
             {(lead.remarks || lead.requirement) && (
@@ -233,6 +270,11 @@ function LeadDetailContent() {
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
             {lead.phone && <a href={`tel:${lead.phone}`} className={btnPrimary}><Phone className="h-3.5 w-3.5" /> Call</a>}
+            {lead.phone && (
+              <a href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className={btn}>
+                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+              </a>
+            )}
             {lead.email && <a href={`mailto:${lead.email}`} className={btn}><Mail className="h-3.5 w-3.5" /> Email</a>}
             {canEdit && <TenantLink href={`/dashboard/leads/${id}/edit`} className={btn}><Pencil className="h-3.5 w-3.5" /> Edit</TenantLink>}
             {canAdd && <button type="button" onClick={duplicate} className={btn}><Copy className="h-3.5 w-3.5" /> Duplicate</button>}
@@ -278,7 +320,7 @@ function LeadDetailContent() {
                 onClick={() => setActiveTab(t.id)}
                 className={cn(
                   "px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors",
-                  tab === t.id ? "border-blue-600 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-700"
+                  tab === t.id ? "border-brand text-brand" : "border-transparent text-slate-500 hover:text-slate-700"
                 )}
               >
                 {t.label}
@@ -347,27 +389,47 @@ function LeadDetailContent() {
                       <p className="text-sm text-slate-500">No follow-ups scheduled yet.</p>
                     ) : lead.followUps.map((f) => {
                       const overdue = !f.completed && new Date(f.scheduledAt).getTime() < Date.now();
+                      const open = completeId === f.id;
                       return (
-                        <li key={f.id} className="py-3 flex items-start justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-slate-100 border border-slate-200">{f.type}</span>
-                              {f.completed ? (
-                                <span className="text-[10px] text-emerald-600 font-semibold">Completed</span>
-                              ) : overdue ? (
-                                <span className="text-[10px] text-red-600 font-semibold">Overdue</span>
-                              ) : (
-                                <span className="text-[10px] text-blue-600 font-semibold">Upcoming</span>
-                              )}
+                        <li key={f.id} className="py-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-slate-100 border border-slate-200">{f.type}</span>
+                                {f.completed ? (
+                                  <span className="text-[10px] text-emerald-600 font-semibold">Completed</span>
+                                ) : overdue ? (
+                                  <span className="text-[10px] text-red-600 font-semibold">Overdue</span>
+                                ) : (
+                                  <span className="text-[10px] text-brand font-semibold">Upcoming</span>
+                                )}
+                              </div>
+                              <p className="text-sm font-medium">{formatDate(f.scheduledAt)}</p>
+                              {f.notes && <p className="text-xs text-slate-500 mt-0.5">{f.notes}</p>}
+                              {f.owner && <p className="text-[10px] text-slate-400 mt-0.5">{f.owner.name}</p>}
                             </div>
-                            <p className="text-sm font-medium">{formatDate(f.scheduledAt)}</p>
-                            {f.notes && <p className="text-xs text-slate-500 mt-0.5">{f.notes}</p>}
-                            {f.owner && <p className="text-[10px] text-slate-400 mt-0.5">{f.owner.name}</p>}
+                            {canEdit && !f.completed && (
+                              <button
+                                type="button"
+                                onClick={() => setCompleteId(open ? null : f.id)}
+                                className="text-xs px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 shrink-0"
+                              >
+                                Mark done
+                              </button>
+                            )}
                           </div>
-                          {canEdit && !f.completed && (
-                            <button type="button" onClick={() => completeFollowUp(f.id)} className="text-xs px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 shrink-0">
-                              Mark done
-                            </button>
+                          {open && (
+                            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-2">
+                              <p className="text-[11px] font-semibold text-slate-600">Schedule next action</p>
+                              <select value={nextFollow.type} onChange={(e) => setNextFollow({ ...nextFollow, type: e.target.value })} className="pro-input text-xs">
+                                {FOLLOWUP_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                              </select>
+                              <input type="datetime-local" value={nextFollow.scheduledAt} onChange={(e) => setNextFollow({ ...nextFollow, scheduledAt: e.target.value })} className="pro-input text-xs" />
+                              <div className="flex gap-2">
+                                <button type="button" onClick={() => completeFollowUp(f.id, true)} className="pro-btn-primary text-xs">Complete + next</button>
+                                <button type="button" onClick={() => completeFollowUp(f.id, false)} className="pro-btn-secondary text-xs">Complete only</button>
+                              </div>
+                            </div>
                           )}
                         </li>
                       );
@@ -399,7 +461,7 @@ function LeadDetailContent() {
                         <p className="text-sm font-medium">{a.fileName}</p>
                         <p className="text-xs text-slate-500">{(a.fileSize / 1024).toFixed(1)} KB · {formatDate(a.uploadedAt)}</p>
                       </div>
-                      <a href={`/api/leads/${id}/attachments/${a.id}/download`} className="text-xs font-medium text-blue-600 hover:underline">Download</a>
+                      <a href={`/api/leads/${id}/attachments/${a.id}/download`} className="text-xs font-medium text-brand hover:underline">Download</a>
                     </li>
                   ))}
                 </ul>
@@ -410,6 +472,50 @@ function LeadDetailContent() {
 
         {/* Sidebar */}
         <div className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold text-slate-500 uppercase mb-3">Ownership & stage</p>
+            {canEdit ? (
+              <select
+                className="pro-input text-sm mb-2"
+                value={lead.status}
+                onChange={(e) => updateLead({ status: e.target.value }).catch(console.error)}
+              >
+                {LEAD_STATUSES.map((s) => (
+                  <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-sm font-medium mb-2">{LEAD_STATUS_LABELS[lead.status]}</p>
+            )}
+            {canEdit && (
+              <select
+                className="pro-input text-sm mb-2"
+                value={lead.priority}
+                onChange={(e) => updateLead({ priority: e.target.value }).catch(console.error)}
+              >
+                {LEAD_PRIORITIES.map((p) => (
+                  <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                ))}
+              </select>
+            )}
+            {canAssign && assignable.length > 0 ? (
+              <select
+                className="pro-input text-sm"
+                value={lead.owner?.id || ""}
+                onChange={(e) => assignLead(e.target.value).catch(console.error)}
+              >
+                <option value="">Unassigned</option>
+                {assignable.map((u) => (
+                  <option key={u.userId} value={u.userId}>{u.name}</option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-sm text-slate-600 flex items-center gap-1.5">
+                <UserPlus className="h-3.5 w-3.5" /> {lead.owner?.name || "Unassigned"}
+              </p>
+            )}
+          </div>
+
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold text-slate-500 uppercase mb-3">Contact</p>
             <p className="font-semibold text-slate-900">{lead.company || `${lead.firstName} ${lead.lastName || ""}`}</p>
@@ -441,7 +547,7 @@ function LeadDetailContent() {
             <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Recent activity</p>
             <LeadActivityFeed items={activityItems} compact limit={5} />
             {activityItems.length > 5 && (
-              <button type="button" onClick={() => setActiveTab("activity")} className="mt-2 text-xs font-medium text-blue-600 hover:underline">
+              <button type="button" onClick={() => setActiveTab("activity")} className="mt-2 text-xs font-medium text-brand hover:underline">
                 View all {activityItems.length} items →
               </button>
             )}
@@ -449,7 +555,7 @@ function LeadDetailContent() {
 
           <TenantLink
             href={`/dashboard/quotations/new?leadId=${id}`}
-            className="block text-center px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+            className="block text-center px-4 py-2.5 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-dark"
           >
             Send quotation
           </TenantLink>

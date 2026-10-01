@@ -67,7 +67,7 @@ export function DealCard({
       <div className="flex items-start justify-between gap-2 mb-2">
         <TenantLink
           href={`/dashboard/deals/${deal.id}`}
-          className="font-semibold text-[13px] text-slate-800 leading-snug hover:text-blue-700 hover:underline"
+          className="font-semibold text-[13px] text-slate-800 leading-snug hover:text-brand hover:underline"
           onMouseDown={(e) => e.stopPropagation()}
         >
           {deal.name}
@@ -101,7 +101,7 @@ export function DealCard({
         {tags.map((tag) => (
           <span
             key={tag}
-            className="inline-flex px-2 py-0.5 rounded text-[10px] font-medium capitalize bg-blue-50 text-blue-700 border border-blue-100"
+            className="inline-flex px-2 py-0.5 rounded text-[10px] font-medium capitalize bg-brand-muted text-brand border border-brand-light"
           >
             {tag}
           </span>
@@ -115,7 +115,7 @@ export function DealCard({
         <div className="flex items-center gap-2">
           {deal.owner && (
             <div
-              className="h-6 w-6 rounded-lg bg-blue-600 flex items-center justify-center text-[9px] font-bold text-white"
+              className="h-6 w-6 rounded-lg bg-brand flex items-center justify-center text-[9px] font-bold text-white"
               title={deal.owner.name}
             >
               {deal.owner.name.charAt(0)}

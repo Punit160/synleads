@@ -151,6 +151,13 @@ router.get("/", async (req, res) => {
     const dateFrom = req.query.dateFrom as string | undefined;
     const dateTo = req.query.dateTo as string | undefined;
     const view = (req.query.view as string) || "active";
+    const unassigned = req.query.unassigned === "true" || req.query.unassigned === "1";
+    const mine = req.query.mine === "true" || req.query.mine === "1";
+    const followUp = req.query.followUp as string | undefined;
+    const pageSizeRaw = Number(req.query.pageSize);
+    const pageRaw = Number(req.query.page);
+    const pageSize = Number.isFinite(pageSizeRaw) && pageSizeRaw > 0 ? Math.min(200, Math.floor(pageSizeRaw)) : 0;
+    const page = Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : 1;
     const sortBy = (req.query.sortBy as string) || "createdAt";
     const sortDir = req.query.sortDir === "asc" ? "asc" : "desc";
 
@@ -163,16 +170,36 @@ router.get("/", async (req, res) => {
       return;
     }
 
-    const leads = await prisma.lead.findMany({
-      where: {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+    const startTomorrow = new Date(endOfDay);
+    const endTomorrow = new Date(startTomorrow);
+    endTomorrow.setDate(endTomorrow.getDate() + 1);
+    const now = new Date();
+
+    const followUpFilter =
+      followUp === "overdue"
+        ? { followUps: { some: { completed: false, scheduledAt: { lt: now } } } }
+        : followUp === "today"
+          ? { followUps: { some: { completed: false, scheduledAt: { gte: startOfDay, lt: endOfDay } } } }
+          : followUp === "tomorrow"
+            ? { followUps: { some: { completed: false, scheduledAt: { gte: startTomorrow, lt: endTomorrow } } } }
+            : followUp === "upcoming"
+              ? { followUps: { some: { completed: false, scheduledAt: { gte: endOfDay } } } }
+              : {};
+
+    const where = {
         workspaceId: ctx.workspace.id,
         ...scopeFilter,
         ...(view === "archived" ? { archivedAt: { not: null } } : view === "all" ? {} : { archivedAt: null }),
         ...(status ? { status } : {}),
         ...(source ? { source } : {}),
         ...(priority ? { priority } : {}),
-        ...(ownerId ? { ownerId } : {}),
+        ...(unassigned ? { ownerId: null } : ownerId ? { ownerId } : mine ? { ownerId: ctx.session.userId } : {}),
         ...(city ? { city: { contains: city } } : {}),
+        ...followUpFilter,
         ...(dateFrom || dateTo ? {
           createdAt: {
             ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
@@ -189,12 +216,30 @@ router.get("/", async (req, res) => {
             { leadNumber: { contains: q } },
             { requirement: { contains: q } },
             { title: { contains: q } },
+            { notes: { contains: q } },
+            { leadNotes: { some: { content: { contains: q } } } },
           ],
         } : {}),
-      },
+      };
+
+    const findArgs = {
+      where,
       include: { owner: { select: { id: true, name: true } } },
       orderBy: { [orderField]: sortDir } as { createdAt?: "asc" | "desc"; firstName?: "asc" | "desc"; status?: "asc" | "desc"; priority?: "asc" | "desc"; score?: "asc" | "desc"; city?: "asc" | "desc"; updatedAt?: "asc" | "desc" },
-    });
+    };
+
+    if (pageSize) {
+      const [total, leads] = await Promise.all([
+        prisma.lead.count({ where }),
+        prisma.lead.findMany({ ...findArgs, skip: (page - 1) * pageSize, take: pageSize }),
+      ]);
+      const enriched = await enrichLeadsForList(leads);
+      const withCustom = await attachCustomFieldsToLeads(ctx.workspace.id, enriched);
+      res.json({ items: withCustom, total, page, pageSize });
+      return;
+    }
+
+    const leads = await prisma.lead.findMany(findArgs);
     const enriched = await enrichLeadsForList(leads);
     const withCustom = await attachCustomFieldsToLeads(ctx.workspace.id, enriched);
     res.json(withCustom);
@@ -214,6 +259,8 @@ router.patch("/bulk", async (req, res) => {
         priority: z.enum(LEAD_PRIORITIES as unknown as [string, ...string[]]).optional(),
         ownerId: z.string().optional(),
         archive: z.boolean().optional(),
+        unassign: z.boolean().optional(),
+        note: z.string().optional(),
       })
       .parse(req.body);
 
@@ -226,27 +273,64 @@ router.patch("/bulk", async (req, res) => {
     if (body.status) data.status = body.status;
     if (body.priority) data.priority = body.priority;
     if (body.ownerId) data.ownerId = body.ownerId;
+    if (body.unassign) data.ownerId = null;
     if (body.archive === true) data.archivedAt = new Date();
     if (body.archive === false) data.archivedAt = null;
 
-    const result = await prisma.lead.updateMany({
-      where: {
-        id: { in: body.ids },
-        workspaceId: ctx.workspace.id,
-        ...getLeadOwnerFilter(ctx),
-      },
-      data,
-    });
+    let updated = 0;
+    if (Object.keys(data).length > 0) {
+      const result = await prisma.lead.updateMany({
+        where: {
+          id: { in: body.ids },
+          workspaceId: ctx.workspace.id,
+          ...getLeadOwnerFilter(ctx),
+        },
+        data,
+      });
+      updated = result.count;
+    } else {
+      updated = body.ids.length;
+    }
+
+    if (body.note?.trim()) {
+      await prisma.leadNote.createMany({
+        data: body.ids.map((leadId) => ({
+          leadId,
+          authorId: ctx.session.userId,
+          content: body.note!.trim(),
+        })),
+      });
+    }
+
+    const timelineParts: string[] = [];
+    if (body.status) timelineParts.push(`Status → ${body.status}`);
+    if (body.priority) timelineParts.push(`Priority → ${body.priority}`);
+    if (body.unassign) timelineParts.push("Unassigned");
+    else if (body.ownerId) timelineParts.push("Reassigned");
+    if (body.note?.trim()) timelineParts.push("Note added");
+    if (timelineParts.length > 0) {
+      await Promise.all(
+        body.ids.map((leadId) =>
+          addTimelineEvent(
+            leadId,
+            body.status ? "status_change" : body.note?.trim() ? "note" : "updated",
+            "Bulk update",
+            timelineParts.join(" · "),
+            ctx.session.userId
+          )
+        )
+      );
+    }
 
     await recordAuditLog({
       workspaceId: ctx.workspace.id,
       userId: ctx.session.userId,
       action: "lead_bulk_update",
       entityType: "lead",
-      details: `${result.count} leads updated`,
+      details: `${updated} leads updated`,
     });
 
-    res.json({ updated: result.count });
+    res.json({ updated });
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: error.errors[0].message });

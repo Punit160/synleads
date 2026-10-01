@@ -20,7 +20,7 @@ export function Breadcrumbs({
         <span key={`${item.label}-${i}`} className="inline-flex items-center gap-1">
           {i > 0 && <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />}
           {item.href ? (
-            <Link href={item.href} className="hover:text-indigo-600 transition-colors">
+            <Link href={item.href} className="hover:text-brand transition-colors">
               {item.label}
             </Link>
           ) : (
@@ -48,11 +48,11 @@ export function PageHeader({
   meta?: string;
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5 pb-5 border-b border-slate-200">
+    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
       <div>
-        {meta && <p className="text-[11px] font-semibold text-indigo-600 uppercase tracking-wider mb-1">{meta}</p>}
-        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
-        {description && <p className="text-sm text-slate-500 mt-0.5">{description}</p>}
+        {meta && <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.12em] mb-1">{meta}</p>}
+        <h1 className="text-[1.5rem] font-semibold text-slate-900 tracking-tight">{title}</h1>
+        {description && <p className="text-sm text-slate-500 mt-1 max-w-2xl">{description}</p>}
       </div>
       {action && <div className="flex flex-wrap items-center gap-2 shrink-0">{action}</div>}
     </div>
@@ -75,10 +75,10 @@ export function Panel({
   noPadding?: boolean;
 }) {
   return (
-    <div className={cn("dash-panel rounded-xl border border-slate-200/90 bg-white shadow-sm overflow-hidden", className)}>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3.5 border-b border-slate-100 bg-gradient-to-r from-slate-50/60 to-indigo-50/20">
+    <div className={cn("dash-panel rounded-[10px] border border-slate-200/90 bg-white overflow-hidden", className)}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-slate-900 tracking-tight">{title}</h2>
+          <h2 className="text-[13px] font-semibold text-slate-900 tracking-tight">{title}</h2>
           {subtitle && <p className="text-[11px] text-slate-500 mt-0.5">{subtitle}</p>}
         </div>
         {action && <div className="shrink-0">{action}</div>}
@@ -112,7 +112,7 @@ export function Metric({
       <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide truncate">{label}</p>
       <p className={cn(
         "text-lg font-semibold tabular-nums text-slate-900 mt-0.5",
-        highlight === "primary" && "text-indigo-700",
+        highlight === "primary" && "text-brand",
         highlight === "up" && "text-emerald-700",
         highlight === "warn" && "text-amber-700",
         highlight === "down" && "text-red-700"
@@ -134,7 +134,7 @@ export function ProTable({ children }: { children: React.ReactNode }) {
 
 export function Th({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <th className={cn("px-3 py-2 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wide border-b border-slate-200 bg-slate-50/80", className)}>
+    <th className={cn("px-3.5 py-2.5 text-left text-[11px] font-semibold text-slate-500 tracking-wide border-b border-slate-200 bg-[#f8fafc]", className)}>
       {children}
     </th>
   );
@@ -142,7 +142,7 @@ export function Th({ children, className }: { children: React.ReactNode; classNa
 
 export function Td({ children, className, colSpan, title }: { children: React.ReactNode; className?: string; colSpan?: number; title?: string }) {
   return (
-    <td colSpan={colSpan} title={title} className={cn("px-3 py-2.5 text-slate-700 border-b border-slate-100 tabular-nums", className)}>
+    <td colSpan={colSpan} title={title} className={cn("px-3.5 py-3 text-slate-700 border-b border-slate-100 tabular-nums", className)}>
       {children}
     </td>
   );
@@ -183,7 +183,7 @@ export function StatusDot({ status }: { status: "connected" | "disconnected" | "
 export function PageLoader() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[320px] gap-3">
-      <div className="h-7 w-7 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin" />
+      <div className="h-7 w-7 rounded-full border-2 border-brand border-t-transparent animate-spin" />
       <p className="text-sm text-slate-500">Loading data...</p>
     </div>
   );
@@ -212,7 +212,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center mb-4">
+      <div className="h-11 w-11 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
         <Icon className="h-6 w-6 text-slate-400" />
       </div>
       <p className="text-sm font-semibold text-slate-900">{title}</p>

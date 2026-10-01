@@ -6,7 +6,7 @@ import { getAuthenticatedContext, requirePermission } from "../lib/rbac";
 import { ensureWorkspaceLeadApiKey } from "../lib/workspace-lead-key";
 import { WEBHOOK_API_KEY_HEADER } from "../lib/brand";
 import { ensureWorkspaceSlug } from "../lib/workspace-slug";
-import { tenantPortalLoginUrl } from "../lib/tenant-url";
+import { tenantPortalLoginUrl, companyWebhookUrl, companyPortalUrl } from "../lib/tenant-url";
 import {
   INTEGRATION_CATALOG,
   INTEGRATION_CONFIG_SCHEMAS,
@@ -16,6 +16,16 @@ import {
   maskIntegrationConfig,
   type IntegrationId,
 } from "../lib/integration-catalog";
+import {
+  applyImapProviderDefaults,
+  generateInboundToken,
+  hasImapCredentials,
+  inboundAddressForToken,
+  inboundWebhookUrl,
+  pollWorkspaceInbox,
+  testImapConnection,
+  type EmailInboxConfig,
+} from "../lib/inbound-email";
 
 const router = Router();
 
@@ -24,13 +34,26 @@ function param(req: { params: Record<string, string | string[] | undefined> }, k
   return Array.isArray(v) ? v[0] : (v ?? "");
 }
 
-function publicWebhookUrl(slug?: string | null): string {
-  const base = process.env.API_PUBLIC_URL || "http://localhost:4001";
-  if (slug) return `${base}/api/public/${slug}/leads`;
-  return `${base}/api/public/leads`;
+function publicWebhookUrl(slug?: string | null): string | null {
+  if (!slug) return null;
+  return companyWebhookUrl(slug, "leads");
 }
 
 const WEBHOOK_INTEGRATIONS = ["website", "zapier", "google_ads", "facebook", "linkedin", "indiamart"] as const;
+
+function inboxExtras(id: string, config: Record<string, unknown>, slug?: string | null) {
+  if (id !== "email_inbox" || !slug) {
+    return {};
+  }
+  const inbox = config as EmailInboxConfig;
+  const token = typeof inbox.inboundToken === "string" ? inbox.inboundToken : null;
+  return {
+    inboundAddress: token ? inboundAddressForToken(slug, token) : null,
+    inboundWebhookUrl: inboundWebhookUrl(slug, token),
+    lastError: typeof inbox.lastError === "string" ? inbox.lastError : null,
+    imapReady: hasImapCredentials(inbox),
+  };
+}
 
 async function loadWorkspaceIntegrationContext(workspaceId: string) {
   const [rows, workspace] = await Promise.all([
@@ -101,10 +124,14 @@ router.get("/", async (req, res) => {
         docsUrl: item.docsUrl ?? null,
         webhookUrl: WEBHOOK_INTEGRATIONS.includes(item.id as (typeof WEBHOOK_INTEGRATIONS)[number])
           ? publicWebhookUrl(workspaceSlug)
-          : null,
+          : item.id === "email_inbox" && workspaceSlug
+            ? inboundWebhookUrl(workspaceSlug, typeof config.inboundToken === "string" ? config.inboundToken : null)
+            : null,
         leadApiKey: WEBHOOK_INTEGRATIONS.includes(item.id as (typeof WEBHOOK_INTEGRATIONS)[number])
           ? leadApiKey
           : null,
+        portalUrl: workspaceSlug ? companyPortalUrl(workspaceSlug) : null,
+        ...inboxExtras(item.id, config, workspaceSlug),
         workspaceId,
         workspaceName,
       };
@@ -119,6 +146,7 @@ router.get("/", async (req, res) => {
       webhookHeader: WEBHOOK_API_KEY_HEADER,
       loginPath: workspaceSlug ? tenantPortalLoginUrl(workspaceSlug) : null,
       portalPath: workspaceSlug ? `/${workspaceSlug}/dashboard` : null,
+      portalUrl: workspaceSlug ? companyPortalUrl(workspaceSlug) : null,
       integrations,
     });
   } catch (error) {
@@ -163,15 +191,20 @@ router.get("/:id", async (req, res) => {
       config: maskIntegrationConfig(config),
       rawConfigKeys: Object.keys(config),
       lastSync: row?.lastSyncAt?.toISOString() ?? null,
-      webhookUrl: WEBHOOK_INTEGRATIONS.includes(id as (typeof WEBHOOK_INTEGRATIONS)[number])
-        ? publicWebhookUrl(workspaceSlug)
-        : null,
-      leadApiKey,
+      webhookUrl:
+        id === "email_inbox" && workspaceSlug
+          ? inboundWebhookUrl(workspaceSlug, typeof config.inboundToken === "string" ? config.inboundToken : null)
+          : WEBHOOK_INTEGRATIONS.includes(id as (typeof WEBHOOK_INTEGRATIONS)[number])
+            ? publicWebhookUrl(workspaceSlug)
+            : null,
+      leadApiKey: WEBHOOK_INTEGRATIONS.includes(id as (typeof WEBHOOK_INTEGRATIONS)[number]) ? leadApiKey : null,
       webhookHeader: WEBHOOK_API_KEY_HEADER,
       workspaceId,
       workspaceName,
       workspaceSlug,
       loginPath: workspaceSlug ? tenantPortalLoginUrl(workspaceSlug) : null,
+      portalUrl: workspaceSlug ? companyPortalUrl(workspaceSlug) : null,
+      ...inboxExtras(id, config, workspaceSlug),
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unauthorized";
@@ -212,6 +245,11 @@ router.put("/:id", async (req, res) => {
       }
     }
 
+    if (id === "email_inbox") {
+      Object.assign(merged, applyImapProviderDefaults(merged as EmailInboxConfig));
+      if (!merged.inboundToken) merged.inboundToken = generateInboundToken();
+    }
+
     const ws = await prisma.workspace.findUnique({
       where: { id: ctx.workspace.id },
       select: { leadApiKey: true },
@@ -243,6 +281,7 @@ router.put("/:id", async (req, res) => {
       status: connected ? "connected" : "disconnected",
       config: maskIntegrationConfig(merged),
       connectedAt: row.connectedAt?.toISOString() ?? null,
+      ...inboxExtras(id, merged, (await ensureWorkspaceSlug(ctx.workspace.id, ctx.workspace.name))),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -270,6 +309,33 @@ router.post("/:id/disconnect", async (req, res) => {
   }
 });
 
+router.post("/:id/sync", async (req, res) => {
+  try {
+    const ctx = await getAuthenticatedContext(req);
+    requirePermission(ctx, "manage_users");
+    const id = param(req, "id");
+    if (id !== "email_inbox") {
+      res.status(400).json({ error: "Fetch is only available for Email Inbox" });
+      return;
+    }
+    const result = await pollWorkspaceInbox(ctx.workspace.id, "catchup");
+    if (result.error && result.processed === 0 && result.created === 0 && result.attached === 0) {
+      res.status(400).json({ error: result.error, ...result });
+      return;
+    }
+    res.json({
+      ok: true,
+      message: result.error
+        ? result.error
+        : `Checked mailbox: ${result.created} new lead${result.created === 1 ? "" : "s"}, ${result.attached} updated, ${result.skipped} skipped.`,
+      ...result,
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Sync failed";
+    res.status(msg === "Forbidden" ? 403 : 400).json({ error: msg });
+  }
+});
+
 router.post("/:id/test", async (req, res) => {
   try {
     const ctx = await getAuthenticatedContext(req);
@@ -288,6 +354,33 @@ router.post("/:id/test", async (req, res) => {
     const connected = isIntegrationConnected(id as IntegrationId, config, { hasLeadApiKey: !!ws?.leadApiKey });
     if (!connected) {
       res.status(400).json({ error: "Complete required fields before testing" });
+      return;
+    }
+
+    if (id === "email_inbox") {
+      const inbox = config as EmailInboxConfig;
+      if (hasImapCredentials(inbox)) {
+        const test = await testImapConnection(inbox);
+        if (!test.ok) {
+          res.status(400).json({ error: test.error });
+          return;
+        }
+      }
+      await prisma.workspaceIntegration.updateMany({
+        where: { workspaceId: ctx.workspace.id, integrationId: id },
+        data: { lastSyncAt: new Date() },
+      });
+      const slug = await ensureWorkspaceSlug(ctx.workspace.id, ctx.workspace.name);
+      const token = inbox.inboundToken;
+      res.json({
+        ok: true,
+        message: hasImapCredentials(inbox)
+          ? "Mailbox connected. New enquiry emails will be imported as leads."
+          : token
+            ? `Inbox ready. Forward lead emails to ${inboundAddressForToken(slug, token)}.`
+            : "Inbox saved. Save again if the inbound address is missing.",
+        ...inboxExtras(id, config, slug),
+      });
       return;
     }
 

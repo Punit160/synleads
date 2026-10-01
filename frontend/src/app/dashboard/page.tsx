@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Plus, CalendarPlus, Loader2, Target, AlarmClock, Kanban, CheckSquare } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch, formatCurrency, formatDate } from "@/lib/api";
@@ -18,7 +18,6 @@ import { TenantLink } from "@/components/ui/tenant-link";
 import { ActivityRow, LeadRow } from "@/components/ui/dashboard-charts";
 import {
   NeutralKpiCard,
-  AttentionChip,
   DashboardFilterBar,
   PipelineHero,
   AgendaTimeline,
@@ -33,6 +32,7 @@ import {
   QuickActionBtn,
   DashboardSectionLabel,
   QuickActionTile,
+  CompactMetric,
 } from "@/components/dashboard/action-dashboard-parts";
 
 type Stats = {
@@ -41,6 +41,8 @@ type Stats = {
   attention?: {
     followUpsDue: number;
     followUpsOverdue: number;
+    followUpsUpcoming?: number;
+    followUpsTomorrow?: number;
     pipelineValue: number;
     weightedPipeline: number;
     dealsAtRiskCount: number;
@@ -112,6 +114,23 @@ type Stats = {
   wonRevenue?: number;
   conversionRate?: number;
   openDealCount?: number;
+  totalLeads?: number;
+  newLeadsToday?: number;
+  newLeads?: number;
+  activeLeads?: number;
+  unassignedLeads?: number;
+  myLeads?: number;
+  teamLeads?: number;
+  followUpsDueToday?: number;
+  followUpsOverdue?: number;
+  followUpsTomorrow?: number;
+  followUpsUpcoming?: number;
+  convertedLeads?: number;
+  lostLeads?: number;
+  qualifiedLeads?: number;
+  proposalLeads?: number;
+  negotiationLeads?: number;
+  leadPipelineValue?: number;
   pipelineByStage?: Array<{
     id: string;
     name: string;
@@ -143,6 +162,8 @@ type NormalizedStats = {
   attention: {
     followUpsDue: number;
     followUpsOverdue: number;
+    followUpsUpcoming: number;
+    followUpsTomorrow: number;
     pipelineValue: number;
     weightedPipeline: number;
     dealsAtRiskCount: number;
@@ -182,11 +203,24 @@ type NormalizedStats = {
   wonRevenue: number;
   conversionRate: number;
   openDealCount: number;
+  totalLeads: number;
+  newLeadsToday: number;
+  newLeads: number;
+  activeLeads: number;
+  unassignedLeads: number;
+  myLeads: number;
+  teamLeads: number;
+  convertedLeads: number;
+  lostLeads: number;
+  qualifiedLeads: number;
+  proposalLeads: number;
+  negotiationLeads: number;
+  leadPipelineValue: number;
   avgSalesCycleDays: number;
 };
 
 const EMPTY_STATS: NormalizedStats = {
-  attention: { followUpsDue: 0, followUpsOverdue: 0, pipelineValue: 0, weightedPipeline: 0, dealsAtRiskCount: 0 },
+  attention: { followUpsDue: 0, followUpsOverdue: 0, followUpsUpcoming: 0, followUpsTomorrow: 0, pipelineValue: 0, weightedPipeline: 0, dealsAtRiskCount: 0 },
   kpiTrends: { pipelineChangePct: null, wonChangePct: null, conversionChangePct: null, forecastChangePct: null },
   salesTarget: { target: 0, achieved: 0, pct: 0, remaining: 0 },
   forecast: { commit: 0, bestCase: 0, pipeline: 0, target: 0, attainmentPct: 0, won: 0 },
@@ -208,6 +242,19 @@ const EMPTY_STATS: NormalizedStats = {
   wonRevenue: 0,
   conversionRate: 0,
   openDealCount: 0,
+  totalLeads: 0,
+  newLeadsToday: 0,
+  newLeads: 0,
+  activeLeads: 0,
+  unassignedLeads: 0,
+  myLeads: 0,
+  teamLeads: 0,
+  convertedLeads: 0,
+  lostLeads: 0,
+  qualifiedLeads: 0,
+  proposalLeads: 0,
+  negotiationLeads: 0,
+  leadPipelineValue: 0,
   avgSalesCycleDays: 0,
 };
 
@@ -238,6 +285,19 @@ function normalizeStats(raw: Stats): NormalizedStats {
     wonRevenue: raw.wonRevenue ?? 0,
     conversionRate: raw.conversionRate ?? 0,
     openDealCount: raw.openDealCount ?? 0,
+    totalLeads: raw.totalLeads ?? 0,
+    newLeadsToday: raw.newLeadsToday ?? 0,
+    newLeads: raw.newLeads ?? 0,
+    activeLeads: raw.activeLeads ?? 0,
+    unassignedLeads: raw.unassignedLeads ?? 0,
+    myLeads: raw.myLeads ?? 0,
+    teamLeads: raw.teamLeads ?? raw.totalLeads ?? 0,
+    convertedLeads: raw.convertedLeads ?? 0,
+    lostLeads: raw.lostLeads ?? 0,
+    qualifiedLeads: raw.qualifiedLeads ?? 0,
+    proposalLeads: raw.proposalLeads ?? 0,
+    negotiationLeads: raw.negotiationLeads ?? 0,
+    leadPipelineValue: raw.leadPipelineValue ?? 0,
     avgSalesCycleDays: raw.avgSalesCycleDays ?? 0,
     overallFunnelConversion: raw.overallFunnelConversion ?? 0,
   };
@@ -300,17 +360,6 @@ export default function DashboardPage() {
 
   const displayName = stats?.userName || auth.user?.name?.split(" ")[0] || "there";
 
-  const trendLabel = useMemo(() => {
-    const labels: Record<string, string> = {
-      today: "vs yesterday",
-      week: "vs last week",
-      month: "vs last month",
-      quarter: "vs last quarter",
-      all: "",
-    };
-    return labels[range] || "vs prior period";
-  }, [range]);
-
   if (loading && !stats) return <PageLoader />;
   if (error && !stats) return <FetchError message={error} onRetry={() => load().catch(console.error)} />;
   if (!stats) return <PageLoader />;
@@ -318,111 +367,90 @@ export default function DashboardPage() {
   const owners = stats.filterOptions.owners;
 
   return (
-    <div className="dash-page max-w-[1600px] min-w-0 space-y-5 sm:space-y-7 relative pb-6">
+    <div className="dash-page max-w-[1600px] min-w-0 space-y-6 relative pb-8">
       {refreshing && (
         <div className="absolute inset-x-0 top-0 z-10 flex justify-center pointer-events-none">
-          <span className="inline-flex items-center gap-2 mt-2 px-4 py-1.5 rounded-full bg-white/95 border border-indigo-100 shadow-lg shadow-indigo-100/50 text-xs font-medium text-slate-600 backdrop-blur-sm">
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" /> Updating dashboard…
+          <span className="inline-flex items-center gap-2 mt-1 px-3 py-1 rounded-full bg-white border border-slate-200 shadow-sm text-xs font-medium text-slate-600">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" /> Updating dashboard…
           </span>
         </div>
       )}
 
-      {/* Hero header */}
-      <div className="dash-hero relative overflow-hidden rounded-2xl p-5 sm:p-6">
-        <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-indigo-300/20 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-violet-300/15 blur-3xl pointer-events-none" />
-        <div className="relative flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className="text-[11px] font-semibold text-slate-600 bg-white/70 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-slate-200/60 shadow-sm">
-                {todayLabel()}
-              </span>
-              {auth.workspace?.name && (
-                <span className="text-[11px] font-semibold text-indigo-700 bg-white/80 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-indigo-200/60 truncate max-w-[220px] shadow-sm">
-                  {auth.workspace.name}
-                </span>
-              )}
-              <span className="text-[11px] font-semibold text-violet-700 bg-violet-50/80 px-2.5 py-1 rounded-lg border border-violet-200/50">
-                {auth.roleLabel}
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              {greeting()}, <span className="bg-gradient-to-r from-indigo-700 to-violet-600 bg-clip-text text-transparent">{displayName}</span>
-            </h1>
-            <p className="text-sm text-slate-600 mt-1.5 font-medium">Here&apos;s what needs your attention today</p>
-            <div className="flex flex-wrap gap-2 mt-5">
-              <AttentionChip
-                label="Follow-ups due"
-                value={stats.attention.followUpsDue}
-                href="/dashboard/follow-ups"
-                tone={stats.attention.followUpsDue > 0 ? "brand" : "neutral"}
-              />
-              <AttentionChip
-                label="Overdue"
-                value={stats.attention.followUpsOverdue}
-                href="/dashboard/follow-ups"
-                tone={stats.attention.followUpsOverdue > 0 ? "danger" : "neutral"}
-              />
-              <AttentionChip label="Pipeline" value={fmtShort(stats.attention.pipelineValue)} href="/dashboard/pipeline" />
-              <AttentionChip label="Weighted" value={fmtShort(stats.attention.weightedPipeline)} href="/dashboard/pipeline" />
-              <AttentionChip
-                label="At risk"
-                value={stats.attention.dealsAtRiskCount}
-                tone={stats.attention.dealsAtRiskCount > 0 ? "warn" : "neutral"}
-              />
-            </div>
-          </div>
-          <div className="relative flex flex-col items-stretch sm:items-end gap-3 shrink-0 w-full xl:w-auto">
-            <DashboardFilterBar
-              range={range}
-              ownerId={ownerId}
-              owners={owners}
-              onRangeChange={setRange}
-              onOwnerChange={setOwnerId}
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              {canAdd && (
-                <>
-                  <QuickActionBtn href="/dashboard/leads/new" primary>
-                    <Plus className="h-3.5 w-3.5" /> Add Lead
-                  </QuickActionBtn>
-                  <QuickActionBtn href="/dashboard/deals/new">
-                    <Plus className="h-3.5 w-3.5" /> Add Deal
-                  </QuickActionBtn>
-                </>
-              )}
-              <QuickActionBtn href="/dashboard/activities">
-                <CalendarPlus className="h-3.5 w-3.5" /> Activity
+      <div className="dash-welcome flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium text-slate-500">
+            {todayLabel()}
+            {auth.workspace?.name ? ` · ${auth.workspace.name}` : ""}
+          </p>
+          <h1 className="text-[1.65rem] sm:text-[1.85rem] font-semibold text-slate-900 tracking-tight mt-1">
+            {greeting()}, {displayName}
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {stats.attention.followUpsOverdue > 0
+              ? `${stats.attention.followUpsOverdue} overdue follow-up${stats.attention.followUpsOverdue === 1 ? "" : "s"} need${stats.attention.followUpsOverdue === 1 ? "s" : ""} attention.`
+              : `${stats.attention.followUpsDue} follow-up${stats.attention.followUpsDue === 1 ? "" : "s"} due today.`}
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 shrink-0">
+          <DashboardFilterBar
+            range={range}
+            ownerId={ownerId}
+            owners={owners}
+            onRangeChange={setRange}
+            onOwnerChange={setOwnerId}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            {canAdd && (
+              <QuickActionBtn href="/dashboard/leads/new" primary>
+                <Plus className="h-3.5 w-3.5" /> Add Lead
               </QuickActionBtn>
-              <BtnSecondary onClick={() => load(true)} disabled={refreshing} className="!inline-flex">
-                <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
-              </BtnSecondary>
-            </div>
+            )}
+            <QuickActionBtn href="/dashboard/follow-ups">
+              <CalendarPlus className="h-3.5 w-3.5" /> Follow-ups
+            </QuickActionBtn>
+            <BtnSecondary onClick={() => load(true)} disabled={refreshing} className="!inline-flex">
+              <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+            </BtnSecondary>
           </div>
         </div>
       </div>
 
-      <DashboardSectionLabel>Key metrics</DashboardSectionLabel>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <NeutralKpiCard label="Pipeline" value={fmtShort(stats.pipelineValue)} trend={stats.kpiTrends.pipelineChangePct} trendLabel={trendLabel} href="/dashboard/pipeline" />
-        <NeutralKpiCard label="Won Revenue" value={fmtShort(stats.wonRevenue)} trend={stats.kpiTrends.wonChangePct} trendLabel={trendLabel} href="/dashboard/leads?status=won" highlight="success" />
-        <NeutralKpiCard label="Forecast" value={fmtShort(stats.weightedForecast)} trend={stats.kpiTrends.forecastChangePct} trendLabel={trendLabel} href="/dashboard/reports" />
-        <NeutralKpiCard label="Conversion" value={`${stats.conversionRate}%`} href="/dashboard/reports" />
-        <NeutralKpiCard label="At Risk" value={stats.attention.dealsAtRiskCount} highlight={stats.attention.dealsAtRiskCount > 0 ? "warn" : undefined} />
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        <NeutralKpiCard label="Total Leads" value={stats.totalLeads} href="/dashboard/leads" hint={`${stats.teamLeads} in current scope`} />
+        <NeutralKpiCard label="Active Leads" value={stats.activeLeads} href="/dashboard/leads" />
+        <NeutralKpiCard label="New Leads" value={stats.newLeads} href="/dashboard/leads?status=new" hint={`${stats.newLeadsToday} today`} />
+        <NeutralKpiCard
+          label="Follow-ups"
+          value={stats.attention.followUpsDue}
+          href="/dashboard/follow-ups?bucket=today"
+          hint={stats.attention.followUpsOverdue > 0 ? `${stats.attention.followUpsOverdue} overdue` : "Due today"}
+          highlight={stats.attention.followUpsOverdue > 0 ? "danger" : undefined}
+        />
+        <NeutralKpiCard label="Won Leads" value={stats.convertedLeads} href="/dashboard/leads?status=won" highlight="success" />
+        <NeutralKpiCard label="Lost Leads" value={stats.lostLeads} href="/dashboard/leads?status=lost" />
       </div>
 
-      <DashboardSectionLabel>Pipeline & schedule</DashboardSectionLabel>
+      <div className="flex flex-wrap gap-2">
+        <CompactMetric label="Unassigned" value={stats.unassignedLeads} href="/dashboard/leads?unassigned=1" tone={stats.unassignedLeads > 0 ? "warn" : undefined} />
+        <CompactMetric label="My leads" value={stats.myLeads} href="/dashboard/leads?mine=1" />
+        <CompactMetric label="Overdue" value={stats.attention.followUpsOverdue} href="/dashboard/follow-ups?bucket=overdue" tone={stats.attention.followUpsOverdue > 0 ? "danger" : undefined} />
+        <CompactMetric label="Upcoming" value={stats.attention.followUpsUpcoming} href="/dashboard/follow-ups?bucket=upcoming" />
+        <CompactMetric label="Qualified" value={stats.qualifiedLeads} href="/dashboard/leads?status=qualified" />
+        <CompactMetric label="Proposal" value={stats.proposalLeads} href="/dashboard/leads?status=proposal_sent" />
+        <CompactMetric label="Negotiation" value={stats.negotiationLeads} href="/dashboard/leads?status=negotiation" />
+        <CompactMetric label="Pipeline" value={fmtShort(stats.leadPipelineValue || stats.pipelineValue)} href="/dashboard/pipeline" />
+        <CompactMetric label="Won revenue" value={fmtShort(stats.wonRevenue)} href="/dashboard/leads?status=won" tone="success" />
+      </div>
 
-      {/* Hero: Pipeline + Agenda */}
-      <div className="grid lg:grid-cols-12 gap-4">
-        <Panel title="Sales Pipeline" subtitle="Deal value by stage" className="lg:col-span-7" noPadding action={<TenantLink href="/dashboard/pipeline" className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold">Open →</TenantLink>}>
+      <div className="grid lg:grid-cols-12 gap-5">
+        <Panel title="Sales pipeline" subtitle="Value by stage" className="lg:col-span-8" noPadding action={<TenantLink href="/dashboard/pipeline" className="text-xs text-brand hover:text-brand-dark font-semibold">Open →</TenantLink>}>
           <PipelineHero stages={stats.pipelineByStage} totalValue={stats.pipelineValue} openDeals={stats.openDealCount} weightedPipeline={stats.weightedForecast} avgDealSize={stats.avgDealSize} avgSalesCycleDays={stats.avgSalesCycleDays} />
         </Panel>
-        <Panel title="Today's Agenda" subtitle="Follow-ups & activities" className="lg:col-span-5" noPadding action={<TenantLink href="/dashboard/activities" className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold">All →</TenantLink>}>
-          <AgendaTimeline items={stats.todaysAgenda} />
-        </Panel>
+        <div className="lg:col-span-4 space-y-5">
+          <Panel title="Today's agenda" subtitle="Follow-ups & activities" noPadding action={<TenantLink href="/dashboard/activities" className="text-xs text-brand hover:text-brand-dark font-semibold">All →</TenantLink>}>
+            <AgendaTimeline items={stats.todaysAgenda} />
+          </Panel>
+        </div>
       </div>
 
       {stats.aiBrief.length > 0 && <AiBriefCard items={stats.aiBrief} />}
@@ -465,17 +493,17 @@ export default function DashboardPage() {
             <Panel title="Lead Sources" subtitle="Channel ROI" className="lg:col-span-4" noPadding>
               <LeadSourceTable rows={stats.leadSourcePerformance} bestSource={stats.bestSource} />
             </Panel>
-            <Panel title="Sales Performance" subtitle="Team leaderboard" className="lg:col-span-4" noPadding action={<TenantLink href="/dashboard/reports" className="text-xs text-indigo-600 font-semibold">Reports →</TenantLink>}>
+            <Panel title="Sales Performance" subtitle="Team leaderboard" className="lg:col-span-4" noPadding action={<TenantLink href="/dashboard/reports" className="text-xs text-brand font-semibold">Reports →</TenantLink>}>
               <SalesPerformanceTable rows={stats.salesPerformance} topPerformer={stats.topPerformer} />
             </Panel>
           </>
         ) : (
           <Panel title="Quick Actions" subtitle="Jump to your daily work" className="lg:col-span-8 dash-panel" noPadding>
             <div className="grid sm:grid-cols-2">
-              <QuickActionTile href="/dashboard/leads" label="My Leads" sub="View & update prospects" icon={Target} accent="from-indigo-500 to-violet-600" />
-              <QuickActionTile href="/dashboard/follow-ups" label="Follow-ups" sub={`${stats.attention.followUpsDue} due today`} icon={AlarmClock} accent="from-cyan-500 to-blue-600" />
-              <QuickActionTile href="/dashboard/pipeline" label="My Pipeline" sub={`${stats.openDealCount} open deals`} icon={Kanban} accent="from-violet-500 to-purple-600" />
-              <QuickActionTile href="/dashboard/tasks" label="My Tasks" sub="Tasks & to-dos" icon={CheckSquare} accent="from-emerald-500 to-teal-600" />
+              <QuickActionTile href="/dashboard/leads" label="My Leads" sub="View & update prospects" icon={Target} accent="bg-brand" />
+              <QuickActionTile href="/dashboard/follow-ups" label="Follow-ups" sub={`${stats.attention.followUpsDue} due today`} icon={AlarmClock} accent="bg-cyan-600" />
+              <QuickActionTile href="/dashboard/pipeline" label="My Pipeline" sub={`${stats.openDealCount} open deals`} icon={Kanban} accent="bg-slate-700" />
+              <QuickActionTile href="/dashboard/tasks" label="My Tasks" sub="Tasks & to-dos" icon={CheckSquare} accent="bg-emerald-600" />
             </div>
           </Panel>
         )}
@@ -485,7 +513,7 @@ export default function DashboardPage() {
 
       {/* Recent activity */}
       <div className="grid lg:grid-cols-2 gap-4">
-        <Panel title="Recent Leads" noPadding action={<TenantLink href="/dashboard/leads" className="text-xs text-indigo-600 font-semibold">All →</TenantLink>}>
+        <Panel title="Recent Leads" noPadding action={<TenantLink href="/dashboard/leads" className="text-xs text-brand font-semibold">All →</TenantLink>}>
           <div className="divide-y divide-slate-100 max-h-[280px] overflow-y-auto">
             {stats.recentLeads.length === 0 ? (
               <EmptyState title="No leads yet" action={canAdd ? <QuickActionBtn href="/dashboard/leads/new" primary>+ Add lead</QuickActionBtn> : undefined} />
@@ -496,7 +524,7 @@ export default function DashboardPage() {
             )}
           </div>
         </Panel>
-        <Panel title="Recent Activity" noPadding action={<TenantLink href="/dashboard/activities" className="text-xs text-indigo-600 font-semibold">All →</TenantLink>}>
+        <Panel title="Recent Activity" noPadding action={<TenantLink href="/dashboard/activities" className="text-xs text-brand font-semibold">All →</TenantLink>}>
           {stats.recentActivities.length === 0 ? (
             <EmptyState title="No recent activity" />
           ) : (

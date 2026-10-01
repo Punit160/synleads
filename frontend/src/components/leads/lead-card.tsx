@@ -143,7 +143,7 @@ export function LeadCard({
               {canEdit && (
                 <TenantLink
                   href={`/dashboard/leads/${lead.id}/edit`}
-                  className="shrink-0 p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-blue-600"
+                  className="shrink-0 p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-brand"
                   title="Edit lead"
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -159,7 +159,7 @@ export function LeadCard({
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="text-xs font-medium text-blue-600 hover:underline mb-3 inline-flex items-center gap-0.5"
+              className="text-xs font-medium text-brand hover:underline mb-3 inline-flex items-center gap-0.5"
             >
               {expanded ? (
                 <>Show less <ChevronUp className="h-3 w-3" /></>
@@ -227,14 +227,14 @@ export function LeadCard({
             )}
             <TenantLink
               href={`/dashboard/quotations/new?leadId=${lead.id}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark"
             >
               <FileText className="h-3.5 w-3.5" /> Send Quotation
             </TenantLink>
             {canEdit && (
               <TenantLink
                 href={`/dashboard/leads/${lead.id}/edit`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark"
               >
                 Update
               </TenantLink>
@@ -320,13 +320,13 @@ export function LeadCard({
               <button
                 type="button"
                 onClick={() => setShowActivity((v) => !v)}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-blue-700"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-brand"
               >
                 <History className="h-3.5 w-3.5" />
                 Work & history
                 {showActivity ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
-              <TenantLink href={`/dashboard/leads/${lead.id}?tab=activity`} className="text-[11px] font-medium text-blue-600 hover:underline">
+              <TenantLink href={`/dashboard/leads/${lead.id}?tab=activity`} className="text-[11px] font-medium text-brand hover:underline">
                 Full activity →
               </TenantLink>
             </div>
@@ -364,11 +364,11 @@ export function LeadCard({
 
           {/* Quick icon actions */}
           <div className="grid grid-cols-4 gap-1 mb-3">
-            <TenantLink href={`/dashboard/leads/${lead.id}`} className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-white text-slate-500 hover:text-blue-600" title="View Lead">
+            <TenantLink href={`/dashboard/leads/${lead.id}`} className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-white text-slate-500 hover:text-brand" title="View Lead">
               <Eye className="h-4 w-4" />
               <span className="text-[9px]">View</span>
             </TenantLink>
-            <button type="button" onClick={() => copyLeadDetails(lead)} className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-white text-slate-500 hover:text-blue-600" title="Copy Details">
+            <button type="button" onClick={() => copyLeadDetails(lead)} className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-white text-slate-500 hover:text-brand" title="Copy Details">
               <Copy className="h-4 w-4" />
               <span className="text-[9px]">Copy</span>
             </button>
@@ -379,12 +379,12 @@ export function LeadCard({
               </button>
             )}
             {canAssign && (
-              <TenantLink href={`/dashboard/leads/${lead.id}?tab=assign`} className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-white text-slate-500 hover:text-blue-600" title="Assign">
+              <TenantLink href={`/dashboard/leads/${lead.id}?tab=assign`} className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-white text-slate-500 hover:text-brand" title="Assign">
                 <Users className="h-4 w-4" />
                 <span className="text-[9px]">Assign</span>
               </TenantLink>
             )}
-            <TenantLink href={`/dashboard/leads/${lead.id}`} className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-white text-slate-500 hover:text-blue-600" title="Profile">
+            <TenantLink href={`/dashboard/leads/${lead.id}`} className="flex flex-col items-center gap-0.5 p-2 rounded-lg hover:bg-white text-slate-500 hover:text-brand" title="Profile">
               <Building2 className="h-4 w-4" />
               <span className="text-[9px]">Profile</span>
             </TenantLink>
@@ -393,7 +393,7 @@ export function LeadCard({
           {/* Communication shortcuts */}
           <div className="grid grid-cols-4 gap-1.5">
             {lead.phone ? (
-              <a href={`tel:${lead.phone}`} className="flex items-center justify-center p-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700" title="Call">
+              <a href={`tel:${lead.phone}`} className="flex items-center justify-center p-2.5 rounded-lg bg-brand text-white hover:bg-brand-dark" title="Call">
                 <Phone className="h-4 w-4" />
               </a>
             ) : (
@@ -428,7 +428,7 @@ export function LeadCard({
           <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
             <TenantLink
               href={`/dashboard/leads/${lead.id}?tab=timeline`}
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:underline"
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-brand hover:underline"
             >
               <History className="h-3.5 w-3.5" /> Lead History
             </TenantLink>

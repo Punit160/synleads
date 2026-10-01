@@ -179,7 +179,7 @@ export default function PipelinePage() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
           <div className="flex items-center gap-4 flex-wrap">
             <div>
-              <h1 className="text-xl font-bold text-slate-900">Pipeline</h1>
+              <h1 className="text-lg font-semibold text-slate-900 tracking-tight">Pipeline</h1>
               <p className="text-xs text-slate-500 mt-0.5">Drag deals between stages or switch to list view</p>
             </div>
             <div className="flex items-center rounded-lg border border-slate-200 p-0.5 bg-slate-50">
@@ -309,8 +309,8 @@ export default function PipelinePage() {
                   onDrop={(e) => handleDrop(stage.id, e)}
                 >
                   <div
-                    className={`rounded-t border-t-4 px-3 py-2.5 mb-2 bg-slate-50 ${theme.header}`}
-                    style={{ borderTopWidth: 4 }}
+                    className={`rounded-t-lg border-t-[3px] px-3 py-2.5 mb-2 bg-white border border-b-0 border-slate-200 ${theme.header}`}
+                    style={{ borderTopWidth: 3 }}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <h3 className={`font-semibold text-sm ${theme.accent}`}>{stage.name}</h3>
@@ -392,7 +392,7 @@ export default function PipelinePage() {
                 {allDeals.map((deal) => (
                   <tr key={deal.id} className="hover:bg-slate-50">
                     <td className="px-3 py-2.5 font-medium text-slate-900 border-b border-slate-100 max-w-[160px] truncate">
-                      <TenantLink href={`/dashboard/deals/${deal.id}`} className="hover:text-blue-700 hover:underline block truncate">{deal.name}</TenantLink>
+                      <TenantLink href={`/dashboard/deals/${deal.id}`} className="hover:text-brand hover:underline block truncate">{deal.name}</TenantLink>
                     </td>
                     <td className="px-3 py-2.5 text-slate-600 border-b border-slate-100 max-w-[120px] truncate">{deal.account?.name || "—"}</td>
                     <td className="px-3 py-2.5 border-b border-slate-100">
@@ -437,7 +437,7 @@ export default function PipelinePage() {
                   {filteredArchived.map((deal) => (
                     <tr key={deal.id} className="hover:bg-slate-50">
                       <td className="px-3 py-2.5 font-medium text-slate-900 border-b border-slate-100">
-                      <TenantLink href={`/dashboard/deals/${deal.id}`} className="hover:text-blue-700 hover:underline">{deal.name}</TenantLink>
+                      <TenantLink href={`/dashboard/deals/${deal.id}`} className="hover:text-brand hover:underline">{deal.name}</TenantLink>
                     </td>
                       <td className="px-3 py-2.5 text-slate-600 border-b border-slate-100">{deal.account?.name || "—"}</td>
                       <td className="px-3 py-2.5 border-b border-slate-100">

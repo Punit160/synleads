@@ -235,6 +235,16 @@ export const USER_MANUAL_SECTIONS: ManualSection[] = [
         body: "Use your company mail server or provider (Gmail App Password, SendGrid, SES). Enter SMTP host, port, username, password, and From address. Required for sending emails directly from Synentrix Flow when live dispatch is enabled.",
       },
       {
+        heading: "Email Inbox (Lead capture)",
+        body: "For email marketing and inbound enquiries: add the company inbox that receives lead details (sales@, info@, or your campaign reply-to). Synentrix Flow creates a lead from each new message — name, email, phone, company, and requirement are parsed from the body when present. Matching email or phone is attached to the existing lead instead of creating a duplicate.",
+        bullets: [
+          "Integrations → Email Inbox (Lead capture) → enter the company inbox → Save & connect",
+          "Forward that mailbox to this company's unique inbound address, or connect Gmail/Outlook IMAP so only this workspace reads the inbox",
+          "The inbound URL includes your company slug — mail posted there cannot create leads in another company",
+          "Use Fetch now to import immediately, or wait for automatic checks every few minutes",
+        ],
+      },
+      {
         heading: "WhatsApp & SMS",
         body: "Choose your provider (Meta Cloud API, Twilio, MSG91, Textlocal). Paste API token and sender/phone number ID. Communications are logged on leads; outbound messages use your provider when connected.",
       },
@@ -273,6 +283,10 @@ export const USER_MANUAL_SECTIONS: ManualSection[] = [
           "Required field: firstName. Optional: lastName, email, phone, company, city, state, source, requirement, budget, remarks",
           "Default source is Website if not specified; duplicate email/phone returns an error so you do not create duplicates",
         ],
+      },
+      {
+        heading: "Email marketing & inbox capture",
+        body: "Companies that run email campaigns can connect Email Inbox under Integrations. Enquiries and replies that arrive on the company mailbox are parsed into leads (source: Email). Duplicate email or phone is attached to the existing lead with the message logged on the timeline.",
       },
       {
         heading: "Example webhook body",

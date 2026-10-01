@@ -20,7 +20,7 @@ function ClickableShell({
     <TenantLink
       href={href}
       className={cn(
-        "block rounded-xl transition-all hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2",
+        "block rounded-xl transition-all hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
         className
       )}
     >
@@ -31,15 +31,15 @@ function ClickableShell({
 
 /* ── KPI hero cards ── */
 const KPI_THEMES = {
-  blue: { bg: "bg-indigo-50", border: "border-indigo-100", icon: "bg-indigo-600 text-white", value: "text-indigo-700", ring: "stroke-indigo-600" },
-  emerald: { bg: "bg-emerald-50", border: "border-emerald-100", icon: "bg-emerald-600 text-white", value: "text-emerald-700", ring: "stroke-emerald-600" },
-  violet: { bg: "bg-violet-50", border: "border-violet-100", icon: "bg-violet-600 text-white", value: "text-violet-700", ring: "stroke-violet-600" },
-  amber: { bg: "bg-amber-50", border: "border-amber-100", icon: "bg-amber-500 text-white", value: "text-amber-700", ring: "stroke-amber-500" },
-  rose: { bg: "bg-rose-50", border: "border-rose-100", icon: "bg-rose-500 text-white", value: "text-rose-700", ring: "stroke-rose-600" },
-  cyan: { bg: "bg-cyan-50", border: "border-cyan-100", icon: "bg-cyan-600 text-white", value: "text-cyan-700", ring: "stroke-cyan-600" },
-  teal: { bg: "bg-teal-50", border: "border-teal-100", icon: "bg-teal-600 text-white", value: "text-teal-700", ring: "stroke-teal-600" },
-  indigo: { bg: "bg-indigo-50", border: "border-indigo-100", icon: "bg-indigo-600 text-white", value: "text-indigo-700", ring: "stroke-indigo-600" },
-  slate: { bg: "bg-slate-50", border: "border-slate-200", icon: "bg-slate-700 text-white", value: "text-slate-800", ring: "stroke-slate-600" },
+  blue: { icon: "bg-brand-muted text-brand border-brand-light", accent: "bg-brand", value: "text-slate-900", ring: "stroke-brand" },
+  emerald: { icon: "bg-emerald-50 text-emerald-700 border-emerald-100", accent: "bg-emerald-600", value: "text-emerald-800", ring: "stroke-emerald-600" },
+  violet: { icon: "bg-indigo-50 text-indigo-600 border-indigo-100", accent: "bg-indigo-500", value: "text-slate-900", ring: "stroke-indigo-500" },
+  amber: { icon: "bg-amber-50 text-amber-700 border-amber-100", accent: "bg-amber-500", value: "text-amber-800", ring: "stroke-amber-500" },
+  rose: { icon: "bg-rose-50 text-rose-600 border-rose-100", accent: "bg-rose-500", value: "text-rose-700", ring: "stroke-rose-500" },
+  cyan: { icon: "bg-cyan-50 text-cyan-700 border-cyan-100", accent: "bg-cyan-600", value: "text-slate-900", ring: "stroke-cyan-600" },
+  teal: { icon: "bg-emerald-50 text-emerald-700 border-emerald-100", accent: "bg-emerald-600", value: "text-slate-900", ring: "stroke-emerald-600" },
+  indigo: { icon: "bg-brand-muted text-brand border-brand-light", accent: "bg-brand", value: "text-slate-900", ring: "stroke-brand" },
+  slate: { icon: "bg-slate-100 text-slate-700 border-slate-200", accent: "bg-slate-800", value: "text-slate-900", ring: "stroke-slate-600" },
 } as const;
 
 export type KpiTheme = keyof typeof KPI_THEMES;
@@ -63,21 +63,22 @@ export function KpiCard({
 }) {
   const t = KPI_THEMES[theme];
   return (
-    <ClickableShell href={href} className={cn("rounded-xl border p-4", t.bg, t.border)}>
-      <div className="flex items-start justify-between gap-3">
+    <ClickableShell href={href} className="relative overflow-hidden rounded-[10px] border border-slate-200/90 bg-white p-4 hover:border-slate-300 hover:shadow-[0_8px_20px_-12px_rgba(15,23,42,0.18)]">
+      <span className={cn("absolute inset-x-0 top-0 h-[3px] rounded-t-[10px]", t.accent)} />
+      <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
-          <p className={cn("text-2xl font-bold tabular-nums mt-1 tracking-tight", t.value)}>{value}</p>
-          {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+          <p className="text-[11px] font-semibold text-slate-500 tracking-wide">{label}</p>
+          <p className={cn("text-2xl font-semibold tabular-nums mt-1.5 tracking-tight", t.value)}>{value}</p>
+          {sub && <p className="text-xs text-slate-500 mt-1.5">{sub}</p>}
         </div>
-        <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm", t.icon)}>
-          <Icon className="h-5 w-5" />
+        <div className={cn("h-9 w-9 rounded-lg border flex items-center justify-center shrink-0", t.icon)}>
+          <Icon className="h-4 w-4" strokeWidth={1.75} />
         </div>
       </div>
       {progress !== undefined && (
-        <div className="mt-3 h-1.5 rounded-full bg-white/80 overflow-hidden">
+        <div className="mt-3 h-1.5 rounded-full bg-slate-100 overflow-hidden">
           <div
-            className={cn("h-full rounded-full transition-all duration-700", t.icon.split(" ")[0])}
+            className={cn("h-full rounded-full transition-all duration-700", t.accent)}
             style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
           />
         </div>
@@ -88,16 +89,13 @@ export function KpiCard({
 
 /* ── Horizontal bar rows ── */
 const BAR_COLORS = [
-  "bg-blue-500",
-  "bg-indigo-500",
-  "bg-violet-500",
-  "bg-cyan-500",
-  "bg-teal-500",
-  "bg-emerald-500",
-  "bg-amber-500",
-  "bg-rose-500",
-  "bg-orange-500",
-  "bg-sky-500",
+  "bg-[#384bff]",
+  "bg-[#6366f1]",
+  "bg-[#0f172a]",
+  "bg-[#0891b2]",
+  "bg-[#059669]",
+  "bg-[#d97706]",
+  "bg-[#e11d48]",
 ];
 
 export function BarRow({
@@ -107,6 +105,7 @@ export function BarRow({
   colorIndex = 0,
   suffix,
   href,
+  barClass,
 }: {
   label: string;
   value: string | number;
@@ -114,12 +113,13 @@ export function BarRow({
   colorIndex?: number;
   suffix?: string;
   href?: string;
+  barClass?: string;
 }) {
-  const barColor = BAR_COLORS[colorIndex % BAR_COLORS.length];
+  const barColor = barClass || BAR_COLORS[colorIndex % BAR_COLORS.length];
   const row = (
     <div className={cn("group", href && "cursor-pointer rounded-lg px-2 py-1 -mx-2 hover:bg-slate-50/80")}>
       <div className="flex items-center justify-between gap-2 mb-1.5">
-        <span className="text-sm font-medium text-slate-800 truncate group-hover:text-blue-700">{label}</span>
+        <span className="text-sm font-medium text-slate-800 truncate group-hover:text-brand">{label}</span>
         <span className="text-sm font-semibold tabular-nums text-slate-900 shrink-0">
           {value}{suffix && <span className="text-slate-400 font-normal ml-1">{suffix}</span>}
         </span>
@@ -141,13 +141,13 @@ export function BarChartList({
   items,
   className,
 }: {
-  items: Array<{ label: string; value: number; pct: number; href?: string }>;
+  items: Array<{ label: string; value: number; pct: number; href?: string; barClass?: string }>;
   className?: string;
 }) {
   return (
     <div className={cn("space-y-4 p-4", className)}>
       {items.map((item, i) => (
-        <BarRow key={item.label} label={item.label} value={item.value} pct={item.pct} colorIndex={i} href={item.href} />
+        <BarRow key={item.label} label={item.label} value={item.value} pct={item.pct} colorIndex={i} href={item.href} barClass={item.barClass} />
       ))}
     </div>
   );
@@ -215,7 +215,7 @@ export function PipelineBars({
         const row = (
           <div className="flex items-center gap-3 group cursor-pointer rounded-lg px-1 py-1 -mx-1 hover:bg-slate-50/80">
             <div className="w-24 shrink-0">
-              <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-blue-700">{stage.name}</p>
+              <p className="text-xs font-semibold text-slate-800 truncate group-hover:text-brand">{stage.name}</p>
               <p className="text-[10px] text-slate-400">{stage.dealCount} deals</p>
             </div>
             <div className="flex-1 min-w-0">
@@ -320,10 +320,10 @@ export function StatPill({
 }) {
   const t = KPI_THEMES[color];
   return (
-    <ClickableShell href={href} className={cn("rounded-lg border px-3 py-2.5", t.bg, t.border)}>
+    <ClickableShell href={href} className="rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 hover:border-slate-300">
       <div className="flex items-center gap-3">
         {Icon && (
-          <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", t.icon)}>
+          <div className={cn("h-8 w-8 rounded-lg border flex items-center justify-center shrink-0", t.icon)}>
             <Icon className="h-4 w-4" />
           </div>
         )}
@@ -360,7 +360,7 @@ export function TeamMemberRow({
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5">
       <div className="flex items-start gap-3">
-        <div className="h-9 w-9 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 text-xs font-bold">
+        <div className="h-9 w-9 rounded-full bg-brand-muted text-brand flex items-center justify-center shrink-0 text-xs font-bold">
           {name.charAt(0).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
@@ -478,7 +478,7 @@ export function LeadRow({
           <span className="font-mono text-[10px] text-slate-500 font-medium">{leadNumber}</span>
           <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", statusClass)}>{status}</span>
         </div>
-        <p className="text-sm font-semibold text-slate-900 truncate group-hover:text-indigo-700 transition-colors">{name}</p>
+        <p className="text-sm font-semibold text-slate-900 truncate group-hover:text-brand transition-colors">{name}</p>
         <p className="text-xs text-slate-500 truncate">{company || "No company"}</p>
       </div>
       <div className={cn("h-8 min-w-8 px-2 rounded-lg border flex items-center justify-center text-xs font-bold tabular-nums", scoreColor)}>
@@ -535,14 +535,15 @@ export function DealRow({
 
 export const STATUS_CHART_COLORS: Record<string, string> = {
   new: "bg-slate-400",
-  contacted: "bg-blue-500",
-  qualified: "bg-indigo-500",
-  proposal_sent: "bg-violet-500",
-  negotiation: "bg-amber-500",
-  follow_up: "bg-cyan-500",
-  won: "bg-emerald-500",
-  lost: "bg-rose-500",
-  on_hold: "bg-orange-400",
+  assigned: "bg-[#6366f1]",
+  contacted: "bg-[#384bff]",
+  qualified: "bg-[#0891b2]",
+  proposal_sent: "bg-[#6366f1]",
+  negotiation: "bg-[#d97706]",
+  follow_up: "bg-[#0891b2]",
+  won: "bg-[#059669]",
+  lost: "bg-[#e11d48]",
+  on_hold: "bg-slate-500",
 };
 
 export const PRIORITY_COLORS: Record<string, KpiTheme> = {

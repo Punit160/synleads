@@ -33,6 +33,11 @@ export type IntegrationDetail = {
   workspaceId?: string;
   workspaceName?: string;
   workspaceSlug?: string | null;
+  portalUrl?: string | null;
+  inboundAddress?: string | null;
+  inboundWebhookUrl?: string | null;
+  lastError?: string | null;
+  imapReady?: boolean;
 };
 
 export function IntegrationSetupModal({
@@ -52,6 +57,7 @@ export function IntegrationSetupModal({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -99,6 +105,8 @@ export function IntegrationSetupModal({
         method: "PUT",
         body: JSON.stringify({ config, enabled: true }),
       });
+      const refreshed = await apiFetch<IntegrationDetail>(`/api/integrations/${integrationId}`);
+      setDetail(refreshed);
       if (alsoTest) {
         setTesting(true);
         const test = await apiFetch<{ message: string }>(`/api/integrations/${integrationId}/test`, {
@@ -106,7 +114,11 @@ export function IntegrationSetupModal({
         });
         setMessage(test.message);
       } else {
-        setMessage("Integration saved successfully.");
+        setMessage(
+          refreshed.inboundAddress
+            ? `Saved. Forward lead emails to ${refreshed.inboundAddress}`
+            : "Integration saved successfully."
+        );
       }
       onSaved();
     } catch (e) {
@@ -114,6 +126,23 @@ export function IntegrationSetupModal({
     } finally {
       setSaving(false);
       setTesting(false);
+    }
+  }
+
+  async function fetchInbox() {
+    setSyncing(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await apiFetch<{ message: string }>(`/api/integrations/${integrationId}/sync`, { method: "POST" });
+      setMessage(result.message);
+      const refreshed = await apiFetch<IntegrationDetail>(`/api/integrations/${integrationId}`);
+      setDetail(refreshed);
+      onSaved();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Fetch failed");
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -169,6 +198,11 @@ export function IntegrationSetupModal({
           {detail && !loading && (
             <>
               <p className="text-sm text-slate-600">{detail.summary}</p>
+              {detail.portalUrl && (
+                <p className="text-xs text-slate-500">
+                  Company portal: <span className="font-medium text-slate-700">{detail.portalUrl}</span>
+                </p>
+              )}
 
               <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-4">
                 <p className="text-sm font-medium text-slate-900 mb-2">Setup procedure</p>
@@ -191,7 +225,9 @@ export function IntegrationSetupModal({
 
               {detail.webhookUrl && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2 text-sm">
-                  <p className="font-medium text-slate-900">Webhook URL</p>
+                  <p className="font-medium text-slate-900">
+                    {detail.id === "email_inbox" ? "This company's inbound email URL" : "This company's webhook URL"}
+                  </p>
                   <div className="flex gap-2 items-start">
                     <code className="flex-1 text-xs break-all bg-white border border-slate-200 rounded px-2 py-1.5">{detail.webhookUrl}</code>
                     <button
@@ -203,7 +239,7 @@ export function IntegrationSetupModal({
                       <Copy className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  {detail.leadApiKey ? (
+                  {detail.leadApiKey && detail.id !== "email_inbox" ? (
                     <p className="text-xs text-slate-600">
                       Header <code className="bg-white px-1 rounded">{detail.webhookHeader || WEBHOOK_API_KEY_HEADER}</code>:{" "}
                       <code className="bg-white px-1 rounded">{detail.leadApiKey}</code>
@@ -211,12 +247,44 @@ export function IntegrationSetupModal({
                         {copied === "key" ? "Copied" : "Copy key"}
                       </button>
                     </p>
+                  ) : detail.id === "email_inbox" ? (
+                    <p className="text-xs text-slate-600">
+                      Only this company receives mail posted here. Do not share this URL with another workspace.
+                    </p>
                   ) : (
                     <p className="text-xs text-amber-700">
                       Your company API key loads automatically on the Integrations page. Refresh if missing.
                     </p>
                   )}
-                  {copied === "url" && <p className="text-xs text-emerald-600">Webhook URL copied</p>}
+                  {copied === "url" && <p className="text-xs text-emerald-600">URL copied</p>}
+                </div>
+              )}
+
+              {detail.id === "email_inbox" && (
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-4 space-y-2 text-sm">
+                  <p className="font-medium text-slate-900">Forward lead emails here</p>
+                  {detail.inboundAddress ? (
+                    <>
+                      <div className="flex gap-2 items-start">
+                        <code className="flex-1 text-xs break-all bg-white border border-slate-200 rounded px-2 py-1.5">{detail.inboundAddress}</code>
+                        <button
+                          type="button"
+                          onClick={() => copyText("inbound", detail.inboundAddress!)}
+                          className="shrink-0 p-1.5 rounded border border-slate-200 hover:bg-white"
+                          title="Copy inbound address"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <p className="text-xs text-slate-600">
+                        Forward from {detail.config.captureEmail || "your inbox"} to this company-specific address. Mail for this address is imported only into this workspace.
+                      </p>
+                      {copied === "inbound" && <p className="text-xs text-emerald-600">Inbound address copied</p>}
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-600">Save the company inbox first to generate a unique inbound address.</p>
+                  )}
+                  {detail.lastError && <p className="text-xs text-rose-600">Last mailbox error: {detail.lastError}</p>}
                 </div>
               )}
 
@@ -234,7 +302,22 @@ export function IntegrationSetupModal({
                           <select
                             className="pro-input w-full"
                             value={form[f.key] || ""}
-                            onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                            onChange={(e) => {
+                              const next = { ...form, [f.key]: e.target.value };
+                              if (integrationId === "email_inbox" && f.key === "provider") {
+                                if (e.target.value === "gmail") {
+                                  next.imapHost = "imap.gmail.com";
+                                  next.imapPort = "993";
+                                } else if (e.target.value === "outlook") {
+                                  next.imapHost = "outlook.office365.com";
+                                  next.imapPort = "993";
+                                } else if (e.target.value === "yahoo") {
+                                  next.imapHost = "imap.mail.yahoo.com";
+                                  next.imapPort = "993";
+                                }
+                              }
+                              setForm(next);
+                            }}
                           >
                             <option value="">Select…</option>
                             {f.options?.map((o) => (
@@ -264,6 +347,11 @@ export function IntegrationSetupModal({
           {detail?.status === "connected" && (
             <BtnSecondary onClick={disconnect} className="!text-rose-600 mr-auto">
               Disconnect
+            </BtnSecondary>
+          )}
+          {detail?.id === "email_inbox" && detail.status === "connected" && detail.imapReady && (
+            <BtnSecondary onClick={fetchInbox} className={syncing ? "opacity-50 pointer-events-none" : ""}>
+              {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Fetch now"}
             </BtnSecondary>
           )}
           <BtnSecondary onClick={onClose} className={saving ? "opacity-50 pointer-events-none" : ""}>Cancel</BtnSecondary>

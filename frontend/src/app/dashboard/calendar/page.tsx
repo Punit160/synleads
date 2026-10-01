@@ -240,7 +240,7 @@ export default function CalendarPage() {
             <div className="space-y-6">
               {sortedDates.map((date) => (
                 <div key={date}>
-                  <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2 pb-1 border-b border-slate-200">
+                  <h3 className="text-xs font-semibold text-brand uppercase tracking-wider mb-2 pb-1 border-b border-slate-200">
                     {formatDate(date)}
                   </h3>
                   <div className="space-y-2">

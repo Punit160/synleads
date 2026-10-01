@@ -111,7 +111,7 @@ export function LeadActivityFeed({
       <div className={cn("rounded-lg border border-dashed border-slate-200 bg-slate-50/50 text-center", compact ? "p-3" : "p-6")}>
         <p className={cn("text-slate-500", compact ? "text-xs" : "text-sm")}>{emptyMessage}</p>
         {leadId && (
-          <TenantLink href={`/dashboard/leads/${leadId}?tab=activity`} className="inline-block mt-2 text-xs font-medium text-blue-600 hover:underline">
+          <TenantLink href={`/dashboard/leads/${leadId}?tab=activity`} className="inline-block mt-2 text-xs font-medium text-brand hover:underline">
             Log first activity →
           </TenantLink>
         )}
@@ -129,7 +129,7 @@ export function LeadActivityFeed({
       {showViewAll && leadId && feed.length > (limit || 0) && (
         <TenantLink
           href={`/dashboard/leads/${leadId}?tab=activity`}
-          className="inline-block mt-3 text-xs font-medium text-blue-600 hover:underline"
+          className="inline-block mt-3 text-xs font-medium text-brand hover:underline"
         >
           View full history ({feed.length} items) →
         </TenantLink>

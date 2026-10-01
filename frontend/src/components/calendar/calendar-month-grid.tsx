@@ -16,7 +16,7 @@ export type CalendarItem = {
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const TYPE_DOT: Record<string, string> = {
-  meeting: "bg-indigo-500",
+  meeting: "bg-brand",
   call: "bg-blue-500",
   followup: "bg-cyan-500",
   task: "bg-amber-500",
@@ -24,7 +24,7 @@ const TYPE_DOT: Record<string, string> = {
 };
 
 const TYPE_CHIP: Record<string, string> = {
-  meeting: "bg-indigo-50 text-indigo-800 border-indigo-100",
+  meeting: "bg-brand-muted text-brand border-brand-light",
   call: "bg-blue-50 text-blue-800 border-blue-100",
   followup: "bg-cyan-50 text-cyan-800 border-cyan-100",
   task: "bg-amber-50 text-amber-900 border-amber-100",
@@ -111,7 +111,7 @@ export function CalendarMonthGrid({
 
   return (
     <div className="cal-month">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-indigo-50/30">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50/70">
         <div className="flex items-center gap-2">
           <button type="button" onClick={onPrevMonth} className="cal-nav-btn" aria-label="Previous month">
             <ChevronLeft className="h-4 w-4" />
@@ -155,7 +155,7 @@ export function CalendarMonthGrid({
               <span
                 className={cn(
                   "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold mb-1",
-                  isToday && "bg-indigo-600 text-white",
+                  isToday && "bg-brand text-white",
                   !isToday && cell.inMonth && "text-slate-800",
                   !cell.inMonth && "text-slate-400"
                 )}
@@ -178,7 +178,7 @@ export function CalendarMonthGrid({
                   </div>
                 ))}
                 {dayEvents.length > 3 && (
-                  <p className="text-[10px] font-semibold text-indigo-600 px-1">+{dayEvents.length - 3} more</p>
+                  <p className="text-[10px] font-semibold text-brand px-1">+{dayEvents.length - 3} more</p>
                 )}
               </div>
               <div className="flex flex-wrap gap-0.5 sm:hidden mt-0.5">

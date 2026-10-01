@@ -51,7 +51,7 @@ type Workload = {
   atCapacity: boolean;
 };
 
-const TABS = ["teams", "rules", "workload"] as const;
+const TABS = ["queue", "teams", "rules", "workload"] as const;
 
 const emptyRule = {
   name: "",
@@ -73,12 +73,23 @@ const emptyTeam = { name: "", description: "", leaderId: "", memberUserIds: [] a
 export default function AssignmentPage() {
   const auth = useAuth();
   const canManage = auth.hasPermission("manage_team");
+  const canAssign = auth.hasPermission("assign");
 
-  const [tab, setTab] = useState<(typeof TABS)[number]>("rules");
+  const [tab, setTab] = useState<(typeof TABS)[number]>(canAssign ? "queue" : "rules");
   const [teams, setTeams] = useState<Team[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [workload, setWorkload] = useState<Workload[]>([]);
   const [assignable, setAssignable] = useState<Assignable[]>([]);
+  const [unassigned, setUnassigned] = useState<Array<{
+    id: string;
+    leadNumber: string;
+    firstName: string;
+    lastName: string | null;
+    company: string | null;
+    phone: string | null;
+    source: string | null;
+  }>>([]);
+  const [queueSelected, setQueueSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showRuleForm, setShowRuleForm] = useState(false);
@@ -90,16 +101,21 @@ export default function AssignmentPage() {
   async function load() {
     setLoading(true);
     try {
-      const [t, r, w, a] = await Promise.all([
+      const [t, r, w, a, u] = await Promise.all([
         apiFetch<Team[]>("/api/teams"),
         canManage ? apiFetch<Rule[]>("/api/assignment-rules") : Promise.resolve([]),
         apiFetch<Workload[]>("/api/teams/workload/members"),
-        canManage ? apiFetch<Assignable[]>("/api/users/assignable") : Promise.resolve([]),
+        canAssign ? apiFetch<Assignable[]>("/api/users/assignable") : Promise.resolve([]),
+        canAssign
+          ? apiFetch<Array<{ id: string; leadNumber: string; firstName: string; lastName: string | null; company: string | null; phone: string | null; source: string | null }> | { items: Array<{ id: string; leadNumber: string; firstName: string; lastName: string | null; company: string | null; phone: string | null; source: string | null }> }>("/api/leads?unassigned=1&pageSize=100")
+          : Promise.resolve([]),
       ]);
       setTeams(t);
       setRules(r);
       setWorkload(w);
       setAssignable(a);
+      setUnassigned(Array.isArray(u) ? u : u.items);
+      setQueueSelected([]);
     } finally {
       setLoading(false);
     }
@@ -107,7 +123,7 @@ export default function AssignmentPage() {
 
   useEffect(() => {
     load().catch(console.error);
-  }, [canManage]);
+  }, [canManage, canAssign]);
 
   async function saveRule(e: React.FormEvent) {
     e.preventDefault();
@@ -207,6 +223,7 @@ export default function AssignmentPage() {
 
       <div className="flex gap-1 border-b border-slate-200 pb-1">
         {[
+          ...(canAssign ? [{ id: "queue" as const, label: "Unassigned queue", icon: Gauge }] : []),
           { id: "rules" as const, label: "Assignment Rules", icon: GitBranch },
           { id: "teams" as const, label: "Teams", icon: Users },
           { id: "workload" as const, label: "Workload", icon: Gauge },
@@ -226,6 +243,98 @@ export default function AssignmentPage() {
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {tab === "queue" && canAssign && (
+        <Panel title={`${unassigned.length} unassigned leads`} noPadding>
+          {unassigned.length === 0 ? (
+            <p className="px-4 py-8 text-sm text-slate-500 text-center">Unassigned queue is empty.</p>
+          ) : (
+            <>
+              {queueSelected.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-slate-100 bg-brand-muted">
+                  <p className="text-sm font-semibold">{queueSelected.length} selected</p>
+                  <select
+                    className="pro-input text-xs py-1.5 w-auto"
+                    defaultValue=""
+                    onChange={async (e) => {
+                      if (!e.target.value) return;
+                      await apiFetch("/api/leads/bulk", {
+                        method: "PATCH",
+                        body: JSON.stringify({ ids: queueSelected, ownerId: e.target.value }),
+                      });
+                      e.target.value = "";
+                      await load();
+                    }}
+                  >
+                    <option value="">Assign to…</option>
+                    {assignable.map((u) => (
+                      <option key={u.userId} value={u.userId}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <ProTable>
+                <thead>
+                  <tr>
+                    <Th className="w-10">
+                      <input
+                        type="checkbox"
+                        checked={unassigned.length > 0 && queueSelected.length === unassigned.length}
+                        onChange={() => setQueueSelected((prev) => prev.length === unassigned.length ? [] : unassigned.map((l) => l.id))}
+                      />
+                    </Th>
+                    <Th>Lead</Th>
+                    <Th>Company</Th>
+                    <Th>Phone</Th>
+                    <Th>Source</Th>
+                    <Th>Assign</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unassigned.map((lead) => (
+                    <tr key={lead.id} className="hover:bg-slate-50">
+                      <Td>
+                        <input
+                          type="checkbox"
+                          checked={queueSelected.includes(lead.id)}
+                          onChange={() => setQueueSelected((prev) => prev.includes(lead.id) ? prev.filter((x) => x !== lead.id) : [...prev, lead.id])}
+                        />
+                      </Td>
+                      <Td>
+                        <TenantLink href={`/dashboard/leads/${lead.id}`} className="font-medium hover:underline">
+                          {lead.firstName} {lead.lastName} <span className="text-xs text-slate-400 font-mono">{lead.leadNumber}</span>
+                        </TenantLink>
+                      </Td>
+                      <Td>{lead.company || "—"}</Td>
+                      <Td>{lead.phone || "—"}</Td>
+                      <Td>{lead.source || "—"}</Td>
+                      <Td>
+                        <select
+                          className="pro-input text-xs py-1"
+                          defaultValue=""
+                          onChange={async (e) => {
+                            if (!e.target.value) return;
+                            await apiFetch(`/api/leads/${lead.id}/assign`, {
+                              method: "PATCH",
+                              body: JSON.stringify({ ownerId: e.target.value }),
+                            });
+                            await load();
+                          }}
+                        >
+                          <option value="">Assign…</option>
+                          {assignable.map((u) => (
+                            <option key={u.userId} value={u.userId}>{u.name}</option>
+                          ))}
+                        </select>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </ProTable>
+            </>
+          )}
+        </Panel>
+      )}
 
       {tab === "rules" && (
         <div className="space-y-4">

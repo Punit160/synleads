@@ -55,6 +55,9 @@ export const FOLLOWUP_TYPES = [
   "whatsapp",
   "video_call",
   "site_visit",
+  "demo",
+  "proposal",
+  "other",
 ] as const;
 
 export const ACTIVITY_TYPES = [

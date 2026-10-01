@@ -22,6 +22,7 @@ import notificationsRoutes from "./routes/notifications";
 import calendarRoutes from "./routes/calendar";
 import platformRoutes from "./routes/platform";
 import publicLeadsRoutes from "./routes/public-leads";
+import publicInboundEmailRoutes from "./routes/public-inbound-email";
 import publicTenantsRoutes from "./routes/public-tenants";
 import auditRoutes from "./routes/audit";
 import integrationsRoutes from "./routes/integrations";
@@ -34,6 +35,7 @@ import errorsRoutes from "./routes/errors";
 import platformErrorsRoutes from "./routes/platform-errors";
 import { notFoundHandler, globalErrorHandler } from "./middleware/global-error";
 import { runSlaChecksAllWorkspaces } from "./lib/sla-engine";
+import { pollAllInboundInboxes } from "./lib/inbound-email";
 import { PRODUCT_NAME } from "./lib/brand";
 import { connectDatabase, checkDatabaseHealth, disconnectDatabase } from "./lib/prisma";
 import { backfillWorkspaceSlugs } from "./lib/backfill-slugs";
@@ -72,6 +74,7 @@ app.use(
   })
 );
 app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 app.use(cookieParser());
 
 app.get("/health", async (_req, res) => {
@@ -108,6 +111,7 @@ app.use("/api/notifications", notificationsRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/platform", platformRoutes);
 app.use("/api/public", publicTenantsRoutes);
+app.use("/api/public", publicInboundEmailRoutes);
 app.use("/api/public", publicLeadsRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/integrations", integrationsRoutes);
@@ -146,6 +150,13 @@ async function start() {
   setInterval(() => {
     runSlaChecksAllWorkspaces().catch(() => {});
   }, 15 * 60 * 1000);
+
+  setTimeout(() => {
+    pollAllInboundInboxes().catch(() => {});
+  }, 20 * 1000);
+  setInterval(() => {
+    pollAllInboundInboxes().catch(() => {});
+  }, 2 * 60 * 1000);
 }
 
 start();

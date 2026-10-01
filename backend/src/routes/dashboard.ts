@@ -247,9 +247,29 @@ router.get("/stats", async (req, res) => {
       }),
     ]);
 
+    const tomorrowEnd = new Date(endOfDay);
+    tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+
+    const [unassignedLeads, myLeads, activeLeads, followUpsTomorrow, followUpsUpcoming, leadValueAgg] = await Promise.all([
+      prisma.lead.count({ where: { ...leadWhere, ownerId: null } }),
+      prisma.lead.count({ where: { ...leadWhere, ownerId: ctx.session.userId } }),
+      prisma.lead.count({ where: { ...leadWhere, status: { notIn: ["won", "lost", "converted"] } } }),
+      prisma.followUp.count({
+        where: { ...scopedFollowUp, completed: false, scheduledAt: { gte: endOfDay, lt: tomorrowEnd } },
+      }),
+      prisma.followUp.count({
+        where: { ...scopedFollowUp, completed: false, scheduledAt: { gte: endOfDay } },
+      }),
+      prisma.lead.aggregate({
+        where: { ...leadWhere, status: { notIn: ["won", "lost", "converted"] } },
+        _sum: { budget: true },
+      }),
+    ]);
+
     const pipelineValue = openDeals.reduce((s, d) => s + d.amount, 0);
     const weightedForecast = openDeals.reduce((s, d) => s + d.amount * ((d.probability ?? 0) / 100), 0);
     const avgDealSize = openDeals.length > 0 ? pipelineValue / openDeals.length : 0;
+    const leadPipelineValue = leadValueAgg._sum.budget ?? 0;
 
     const pipelineByStage = stages.map((s) => ({
       id: s.id,
@@ -340,6 +360,8 @@ router.get("/stats", async (req, res) => {
       attention: {
         followUpsDue: followUpsDueToday,
         followUpsOverdue,
+        followUpsUpcoming,
+        followUpsTomorrow,
         pipelineValue,
         weightedPipeline: weightedForecast,
         dealsAtRiskCount: dealsAtRisk.length,
@@ -370,12 +392,22 @@ router.get("/stats", async (req, res) => {
       avgSalesCycleDays: 23,
       totalLeads,
       newLeadsToday,
+      newLeads: statusMap.get("new") ?? 0,
+      activeLeads,
+      unassignedLeads,
+      myLeads,
+      teamLeads: totalLeads,
       followUpsDueToday,
       followUpsOverdue,
+      followUpsTomorrow,
+      followUpsUpcoming,
       convertedLeads,
       lostLeads,
       onHoldLeads,
       qualifiedLeads,
+      proposalLeads: statusMap.get("proposal_sent") ?? 0,
+      negotiationLeads: statusMap.get("negotiation") ?? 0,
+      leadPipelineValue,
       contactCount,
       accountCount,
       pipelineValue,
